@@ -115,19 +115,17 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 .hud .num { font-variant-numeric: tabular-nums; }
 
 .labels { position: absolute; inset: 0; pointer-events: none; }
-.lbl { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 10px; opacity: 0; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; color: var(--snow); will-change: transform, opacity; }
-.lbl i { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--snow); background: rgba(16,19,42,.6); flex: none; transition: background .2s, border-color .2s, transform .2s; }
-.lbl b { width: 26px; height: 1px; background: rgba(241,242,248,.45); flex: none; transition: width .25s, background .2s; }
-.lbl span { padding: 4px 8px; background: rgba(16,19,42,.55); border: 1px solid rgba(241,242,248,.14); border-radius: 3px; backdrop-filter: blur(4px); transition: color .2s, border-color .2s; }
-.lbl.flip { flex-direction: row-reverse; }
+/* each label sits at its part's dot; its line and box are placed from script on whichever side is free */
+.lbl { position: absolute; left: 0; top: 0; opacity: 0; font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; color: var(--snow); will-change: transform, opacity; }
+.lbl i { position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--snow); background: rgba(16,19,42,.6); transition: background .2s, border-color .2s, transform .2s; }
+.lbl b { position: absolute; background: rgba(241,242,248,.45); transition: background .2s; }
+.lbl span { position: absolute; width: max-content; white-space: nowrap; line-height: 1.3; padding: 4px 8px; background: rgba(16,19,42,.55); border: 1px solid rgba(241,242,248,.14); border-radius: 3px; backdrop-filter: blur(4px); transition: color .2s, border-color .2s; }
+.lbl.wrap span { white-space: pre-line; }   /* two lines, broken where the name holds a "\n" */
 .lbl.on i { background: var(--copper); border-color: var(--copper); transform: scale(1.5); }
-.lbl.on b { width: 40px; background: var(--copper); }
+.lbl.on b { background: var(--copper); }
 .lbl.on span { color: var(--copper); border-color: rgba(236,143,85,.6); }
-/* phones: the label sits at the part's dot, its line and box are placed from script on any side */
-.labels.compact .lbl { display: block; font-size: 10px; letter-spacing: .03em; }
-.labels.compact .lbl i { position: absolute; left: -3.5px; top: -3.5px; }
-.labels.compact .lbl b { position: absolute; transition: background .2s; }
-.labels.compact .lbl span { position: absolute; width: max-content; white-space: pre-line; line-height: 1.3; padding: 3px 6px; }   /* names break where they hold a "\n" */
+.labels.compact .lbl { font-size: 10px; letter-spacing: .03em; }
+.labels.compact .lbl span { padding: 3px 6px; }
 
 .cursor { position: fixed; z-index: 30; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1px solid #fff; border-radius: 50%; pointer-events: none; transition: width .25s, height .25s, margin .25s, border-color .25s, background .25s; mix-blend-mode: difference; }
 .cursor.big { width: 64px; height: 64px; margin: -32px 0 0 -32px; border-color: var(--copper); background: rgba(236,143,85,.12); mix-blend-mode: normal; }
@@ -762,10 +760,11 @@ function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   renderer.setSize(w, h, false); composer.setSize(w, h);
   camH.aspect = camV.aspect = w / h; camH.updateProjectionMatrix(); camV.updateProjectionMatrix();
+  for (const p of parts) p.sizes = undefined;     // label boxes are measured again
 }
 addEventListener('resize', resize); resize();
 
-document.fonts && document.fonts.ready.then(() => { panelTex.redraw(); displayTex.redraw(); gaugeTex.redraw(); });
+document.fonts && document.fonts.ready.then(() => { panelTex.redraw(); displayTex.redraw(); gaugeTex.redraw(); for (const p of parts) p.sizes = undefined; });
 
 // ---------- per-frame state ----------
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), tmp = new THREE.Vector3();
@@ -845,40 +844,50 @@ function screenRect(obj, w, h) {
 }
 const overlap = (a, b) => Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
 
-// phones: no room beside the outer parts, so each label tries its outer side, then above, below and inside,
-// and takes the spot that covers the fewest labels and parts; it keeps its spot unless another is clearly better
-const LEAD = 18;                                  // dot centre to label box
-const hudBlocks = [...document.querySelectorAll('.hud .corner, .hud .row > span')];
-function placeCompact(p, x, y, w, h, top, placed, solids, dots) {
-  const span = p.el.querySelector('span'), line = p.el.querySelector('b');
-  const sw = span.offsetWidth, sh = span.offsetHeight;
-  const cx = clamp(x - sw / 2, 8, w - 8 - sw);
-  const spots = {
-    out: p.left ? [x - LEAD - sw, y - sh / 2] : [x + LEAD, y - sh / 2],
-    up: [cx, y - LEAD - sh], down: [cx, y + LEAD],
-    in: p.left ? [x + LEAD, y - sh / 2] : [x - LEAD - sw, y - sh / 2],
-  };
+// each label tries one line (not on phones) or two on its outer side, then above, below and inside, and takes the spot
+// that covers the fewest labels, parts and text; it keeps its spot unless another is clearly better
+const hudBlocks = [...document.querySelectorAll('.hud .corner, .hud .row > span')], textRange = document.createRange();
+function labelSizes(p) {                          // box size on one line and on two, measured once per resize
+  if (!p.sizes) {
+    const span = p.el.querySelector('span');
+    p.sizes = [false, true].map(wrap => { p.el.classList.toggle('wrap', wrap); return [span.offsetWidth, span.offsetHeight]; });
+  }
+  return p.sizes;
+}
+function placeLabel(p, x, y, w, h, top, lead, wrapOnly, placed, solids, dots) {
+  const spots = {};
+  for (const [i, [sw, sh]] of labelSizes(p).entries()) {
+    if (wrapOnly && !i) continue;
+    const cx = clamp(x - sw / 2, 8, w - 8 - sw), extra = i ? 200 : 0;   // one line reads better where it fits
+    const side = (dx, base) => [p.left === (dx < 0) ? x - lead - sw : x + lead, y - sh / 2, sw, sh, base + extra];
+    spots['out' + i] = side(-1, 0);
+    spots['in' + i] = side(1, 900);
+    spots['up' + i] = [cx, y - lead - sh, sw, sh, 300 + extra];
+    spots['down' + i] = [cx, y + lead, sw, sh, 300 + extra];
+  }
   const cost = name => {
-    const [bx, by] = spots[name], rc = [bx, by, bx + sw, by + sh];
+    const [bx, by, sw, sh, base] = spots[name], rc = [bx, by, bx + sw, by + sh];
     const m = name === p.side ? 6 : 0;            // slack, so the bobbing can't push a label out of its spot
     if (bx < 8 - m || bx + sw > w - 8 + m || by < top - m || by + sh > h - 60 + m) return Infinity;
-    let c = name === 'out' ? 0 : name === 'in' ? 900 : 300;
-    for (const o of placed) c += overlap(rc, o) * 4;
-    for (const o of solids) c += overlap(rc, o);
+    let c = base;
+    for (const [o, wgt] of placed) c += overlap(rc, o) * wgt;
+    for (const [o, wgt] of solids) c += overlap(rc, o) * wgt;
     for (const o of dots) if (o !== p) c += overlap(rc, [o.sx - 8, o.sy - 8, o.sx + 8, o.sy + 8]) * 8;
     return c;
   };
-  let best = 'out', bestCost = Infinity;
+  let best, bestCost = Infinity;
   for (const name in spots) { const c = cost(name); if (c < bestCost) { best = name; bestCost = c; } }
-  if (p.side && cost(p.side) <= bestCost + 400) best = p.side;
   if (bestCost === Infinity) return false;
+  if (p.side in spots && cost(p.side) <= bestCost + 400) best = p.side;
   p.side = best;
-  const [bx, by] = spots[best];
-  placed.push([bx - 3, by - 3, bx + sw + 3, by + sh + 3]);
+  const [bx, by, sw, sh] = spots[best];
+  placed.push([[bx - 3, by - 3, bx + sw + 3, by + sh + 3], 15]);
+  p.el.classList.toggle('wrap', best.endsWith('1'));
+  const span = p.el.querySelector('span'), line = p.el.querySelector('b');
   span.style.left = `${(bx - x).toFixed(1)}px`; span.style.top = `${(by - y).toFixed(1)}px`;
-  const vert = best === 'up' || best === 'down';
-  const back = vert ? best === 'up' : bx < x;     // the line runs up or left
-  const from = back ? 3 - LEAD : 5, len = `${LEAD - 8}px`;
+  const vert = best.startsWith('up') || best.startsWith('down');
+  const back = vert ? best.startsWith('up') : bx < x;   // the line runs up or left
+  const from = back ? 3 - lead : 5, len = `${lead - 8}px`;
   Object.assign(line.style, vert
     ? { left: '-0.5px', top: `${from}px`, width: '1px', height: len }
     : { top: '-0.5px', left: `${from}px`, width: len, height: '1px' });
@@ -888,24 +897,26 @@ function placeCompact(p, x, y, w, h, top, placed, solids, dots) {
 
 function placeLabels(show) {
   const w = canvas.clientWidth, h = canvas.clientHeight;
-  const compact = w < 600;
+  const compact = w < 600;                        // phones: smaller type, always two lines
   if (compact !== labelsEl.classList.contains('compact')) {
     labelsEl.classList.toggle('compact', compact);
-    for (const p of parts) if (p.el) { p.el.querySelector('span').style.cssText = p.el.querySelector('b').style.cssText = ''; p.side = p.flip = undefined; }
+    for (const p of parts) p.sizes = p.side = undefined;
   }
-  const placed = [], solids = [];
+  const placed = [], solids = [], dots = [];
   let top = 90;
-  if (compact && show) {
+  if (show) {
     const base = labelsEl.getBoundingClientRect();
     top = Math.max(...[...bar.children].map(el => el.getBoundingClientRect().bottom)) - base.top + 8;
-    for (const el of [...hudBlocks, ...copies.filter(c => c.el.style.visibility !== 'hidden').map(c => c.el)]) {   // HUD and text count as labels already in place
-      const r = el.getBoundingClientRect();
-      if (r.width) placed.push([r.left - base.left - 4, r.top - base.top - 4, r.right - base.left + 4, r.bottom - base.top + 4]);
+    // HUD and text: kept well clear, except on a phone where there is no room to spare
+    const keepOff = (r, m) => r.width && placed.push([[r.left - base.left - m, r.top - base.top - m, r.right - base.left + m, r.bottom - base.top + m], compact ? 15 : 30]);
+    for (const el of hudBlocks) keepOff(el.getBoundingClientRect(), 4);
+    for (const c of copies) if (c.el.style.visibility !== 'hidden') {   // the lines of text, not the whole block
+      const walk = document.createTreeWalker(c.el, NodeFilter.SHOW_TEXT);
+      while (walk.nextNode()) { textRange.selectNodeContents(walk.currentNode); for (const r of textRange.getClientRects()) keepOff(r, compact ? 4 : 10); }
     }
-    solids.push(screenRect(frame, w, h));
-    for (const p of parts) if (p.phase !== 'cover' && p.k > 0.75) solids.push(screenRect(p.g, w, h));
+    solids.push([screenRect(frame, w, h), 0.5]);   // the casing's box on screen is loose, its parts' are tight
+    for (const p of parts) if (p.phase !== 'cover' && p.k > 0.75) solids.push([screenRect(p.g, w, h), 2]);
   }
-  const dots = [];
   for (const p of parts) {
     if (!p.el) continue;
     p.vis = show * clamp((p.k - 0.75) / 0.25);
@@ -916,27 +927,10 @@ function placeLabels(show) {
   }
   for (const p of parts) {
     if (!p.el) continue;
-    const vis = p.vis;
-    if (vis <= 0.01) { p.el.style.opacity = 0; p.flip = p.side = undefined; continue; }
-    const x = p.sx, y = p.sy;
-    if (compact) {
-      p.el.classList.toggle('on', hovered === p);
-      p.el.style.opacity = placeCompact(p, x, y, w, h, top, placed, solids, dots) && y > top && y < h - 60 ? vis : 0;
-      continue;
-    }
-    const bw = p.el.offsetWidth;
-    // leave the usual side only when the label runs off screen, and come back only with room to spare,
-    // so the mouse parallax can't make it jump from side to side
-    const room = left => left ? x - bw - 16 : w - 16 - x - bw;
-    let flip = p.flip ?? p.left;
-    if (flip === p.left ? room(flip) < 0 : room(p.left) > 32) flip = !flip;
-    p.flip = flip;
-    const fits = room(flip) >= -8;
-    p.el.classList.toggle('flip', flip);
+    if (p.vis <= 0.01) { p.el.style.opacity = 0; p.side = undefined; continue; }
     p.el.classList.toggle('on', hovered === p);
-    // a flipped label hangs from its right edge, so it stays put when the hover line grows
-    p.el.style.transform = `translate(${(x + (flip ? 4 : -4)).toFixed(1)}px, ${(y - 9).toFixed(1)}px)${flip ? ' translateX(-100%)' : ''}`;
-    p.el.style.opacity = (!fits || y < 90 || y > h - 60) ? 0 : vis;
+    const ok = placeLabel(p, p.sx, p.sy, w, h, top, compact ? 18 : 30, compact, placed, solids, dots);
+    p.el.style.opacity = ok && p.sy > top && p.sy < h - 60 ? p.vis : 0;
   }
 }
 
