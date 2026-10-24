@@ -756,15 +756,16 @@ function progress() {
   return clamp(-r.top / (r.height - innerHeight));
 }
 
+let labelsLaidOut = false;                        // cleared on resize and when the fonts arrive
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   renderer.setSize(w, h, false); composer.setSize(w, h);
   camH.aspect = camV.aspect = w / h; camH.updateProjectionMatrix(); camV.updateProjectionMatrix();
-  for (const p of parts) p.sizes = undefined;     // label boxes are measured again
+  labelsLaidOut = false;                          // labels are laid out again for the new size
 }
 addEventListener('resize', resize); resize();
 
-document.fonts && document.fonts.ready.then(() => { panelTex.redraw(); displayTex.redraw(); gaugeTex.redraw(); for (const p of parts) p.sizes = undefined; });
+document.fonts && document.fonts.ready.then(() => { panelTex.redraw(); displayTex.redraw(); gaugeTex.redraw(); labelsLaidOut = false; });
 
 // ---------- per-frame state ----------
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), tmp = new THREE.Vector3();
@@ -844,20 +845,24 @@ function screenRect(obj, w, h) {
 }
 const overlap = (a, b) => Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
 
-// each label tries one line (not on phones) or two on its outer side, then above, below and inside, and takes the spot
-// that covers the fewest labels, parts and text; it keeps its spot unless another is clearly better
+// labels: each one's spot (side, one line or two) is chosen once per screen size, on the boiler fully exploded
+// with the mouse centred, then kept; only the dot moves with the boiler. Each label tries one line (not on
+// phones) or two on its outer side, then above, below and inside, and takes the spot that covers the fewest
+// labels, parts and text.
 const hudBlocks = [...document.querySelectorAll('.hud .corner, .hud .row > span')], textRange = document.createRange();
-function labelSizes(p) {                          // box size on one line and on two, measured once per resize
+const compactLabels = () => canvas.clientWidth < 600;   // phones: smaller type, always two lines
+const labelLead = () => compactLabels() ? 18 : 30;      // dot centre to label box
+function labelSizes(p) {                          // box size on one line and on two
   if (!p.sizes) {
     const span = p.el.querySelector('span');
     p.sizes = [false, true].map(wrap => { p.el.classList.toggle('wrap', wrap); return [span.offsetWidth, span.offsetHeight]; });
   }
   return p.sizes;
 }
-function placeLabel(p, x, y, w, h, top, lead, wrapOnly, placed, solids, dots) {
-  const spots = {};
+function labelSpots(p, x, y, w) {                 // name -> [x, y, width, height, cost of the spot itself]
+  const spots = {}, lead = labelLead();
   for (const [i, [sw, sh]] of labelSizes(p).entries()) {
-    if (wrapOnly && !i) continue;
+    if (compactLabels() && !i) continue;
     const cx = clamp(x - sw / 2, 8, w - 8 - sw), extra = i ? 200 : 0;   // one line reads better where it fits
     const side = (dx, base) => [p.left === (dx < 0) ? x - lead - sw : x + lead, y - sh / 2, sw, sh, base + extra];
     spots['out' + i] = side(-1, 0);
@@ -865,72 +870,75 @@ function placeLabel(p, x, y, w, h, top, lead, wrapOnly, placed, solids, dots) {
     spots['up' + i] = [cx, y - lead - sh, sw, sh, 300 + extra];
     spots['down' + i] = [cx, y + lead, sw, sh, 300 + extra];
   }
-  const cost = name => {
-    const [bx, by, sw, sh, base] = spots[name], rc = [bx, by, bx + sw, by + sh];
-    const m = name === p.side ? 6 : 0;            // slack, so the bobbing can't push a label out of its spot
-    if (bx < 8 - m || bx + sw > w - 8 + m || by < top - m || by + sh > h - 60 + m) return Infinity;
-    let c = base;
-    for (const [o, wgt] of placed) c += overlap(rc, o) * wgt;
-    for (const [o, wgt] of solids) c += overlap(rc, o) * wgt;
-    for (const o of dots) if (o !== p) c += overlap(rc, [o.sx - 8, o.sy - 8, o.sx + 8, o.sy + 8]) * 8;
-    return c;
-  };
-  let best, bestCost = Infinity;
-  for (const name in spots) { const c = cost(name); if (c < bestCost) { best = name; bestCost = c; } }
-  if (bestCost === Infinity) return false;
-  if (p.side in spots && cost(p.side) <= bestCost + 400) best = p.side;
-  p.side = best;
-  const [bx, by, sw, sh] = spots[best];
-  placed.push([[bx - 3, by - 3, bx + sw + 3, by + sh + 3], 15]);
-  p.el.classList.toggle('wrap', best.endsWith('1'));
-  const span = p.el.querySelector('span'), line = p.el.querySelector('b');
-  span.style.left = `${(bx - x).toFixed(1)}px`; span.style.top = `${(by - y).toFixed(1)}px`;
-  const vert = best.startsWith('up') || best.startsWith('down');
-  const back = vert ? best.startsWith('up') : bx < x;   // the line runs up or left
-  const from = back ? 3 - lead : 5, len = `${lead - 8}px`;
-  Object.assign(line.style, vert
-    ? { left: '-0.5px', top: `${from}px`, width: '1px', height: len }
-    : { top: '-0.5px', left: `${from}px`, width: len, height: '1px' });
-  p.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-  return true;
+  return spots;
+}
+function labelTop() {                             // just under the top bar
+  return Math.max(...[...bar.children].map(el => el.getBoundingClientRect().bottom)) - labelsEl.getBoundingClientRect().top + 8;
+}
+const labelCopy = copies.find(c => c.a < 1 && c.b >= 1);   // the text beside the exploded boiler
+
+function layoutLabels(t) {
+  const w = canvas.clientWidth, h = canvas.clientHeight, compact = compactLabels();
+  labelsEl.classList.toggle('compact', compact);
+  for (const p of parts) p.sizes = undefined;
+  const msx = mouse.sx, msy = mouse.sy; mouse.sx = mouse.sy = 0;
+  updateVR(1, t);                                 // the caller puts the boiler back where it was
+  sceneV.updateMatrixWorld(); camV.updateMatrixWorld();   // otherwise still those of the last render
+  mouse.sx = msx; mouse.sy = msy;
+
+  const base = labelsEl.getBoundingClientRect(), top = labelTop(), placed = [];
+  // HUD and text: kept well clear, except on a phone where there is no room to spare
+  const keepOff = (r, m) => r.width && placed.push([[r.left - base.left - m, r.top - base.top - m, r.right - base.left + m, r.bottom - base.top + m], compact ? 15 : 30]);
+  for (const el of hudBlocks) keepOff(el.getBoundingClientRect(), 4);
+  const shift = labelCopy.el.style.translate; labelCopy.el.style.translate = '0 0';   // measured where it settles
+  const walk = document.createTreeWalker(labelCopy.el, NodeFilter.SHOW_TEXT);   // the lines of text, not the whole block
+  while (walk.nextNode()) { textRange.selectNodeContents(walk.currentNode); for (const r of textRange.getClientRects()) keepOff(r, compact ? 4 : 10); }
+  labelCopy.el.style.translate = shift;
+  const solids = [[screenRect(frame, w, h), 0.5]];   // the casing's box on screen is loose, its parts' are tight
+  for (const p of parts) if (p.phase !== 'cover') solids.push([screenRect(p.g, w, h), 2]);
+  const dots = parts.filter(p => p.el).map(p => { tmp.copy(p.anchor); p.g.localToWorld(tmp); tmp.project(camV); return [(tmp.x * .5 + .5) * w, (-tmp.y * .5 + .5) * h]; });
+
+  for (const [n, p] of parts.filter(p => p.el).entries()) {
+    const [x, y] = dots[n], spots = labelSpots(p, x, y, w);
+    const cost = ([bx, by, sw, sh, c]) => {
+      if (bx < 8 || bx + sw > w - 8 || by < 8 || by + sh > h - 8) return Infinity;
+      const rc = [bx, by, bx + sw, by + sh];
+      c += overlap(rc, [0, 0, w, top]) * 30;        // under the top bar, or reaching into it like into the HUD
+      for (const [o, wgt] of placed) c += overlap(rc, o) * wgt;
+      for (const [o, wgt] of solids) c += overlap(rc, o) * wgt;
+      for (const [m, [dx, dy]] of dots.entries()) if (m !== n) c += overlap(rc, [dx - 8, dy - 8, dx + 8, dy + 8]) * 8;
+      return c;
+    };
+    let best = 'out' + (compact ? 1 : 0), bestCost = Infinity;
+    for (const name in spots) { const c = cost(spots[name]); if (c < bestCost) { best = name; bestCost = c; } }
+    p.side = best;
+    const [bx, by, sw, sh] = spots[best];
+    placed.push([[bx - 3, by - 3, bx + sw + 3, by + sh + 3], 15]);
+    p.el.classList.toggle('wrap', best.endsWith('1'));
+  }
+  labelsLaidOut = true;
 }
 
 function placeLabels(show) {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  const compact = w < 600;                        // phones: smaller type, always two lines
-  if (compact !== labelsEl.classList.contains('compact')) {
-    labelsEl.classList.toggle('compact', compact);
-    for (const p of parts) p.sizes = p.side = undefined;
-  }
-  const placed = [], solids = [], dots = [];
-  let top = 90;
-  if (show) {
-    const base = labelsEl.getBoundingClientRect();
-    top = Math.max(...[...bar.children].map(el => el.getBoundingClientRect().bottom)) - base.top + 8;
-    // HUD and text: kept well clear, except on a phone where there is no room to spare
-    const keepOff = (r, m) => r.width && placed.push([[r.left - base.left - m, r.top - base.top - m, r.right - base.left + m, r.bottom - base.top + m], compact ? 15 : 30]);
-    for (const el of hudBlocks) keepOff(el.getBoundingClientRect(), 4);
-    for (const c of copies) if (c.el.style.visibility !== 'hidden') {   // the lines of text, not the whole block
-      const walk = document.createTreeWalker(c.el, NodeFilter.SHOW_TEXT);
-      while (walk.nextNode()) { textRange.selectNodeContents(walk.currentNode); for (const r of textRange.getClientRects()) keepOff(r, compact ? 4 : 10); }
-    }
-    solids.push([screenRect(frame, w, h), 0.5]);   // the casing's box on screen is loose, its parts' are tight
-    for (const p of parts) if (p.phase !== 'cover' && p.k > 0.75) solids.push([screenRect(p.g, w, h), 2]);
-  }
+  const w = canvas.clientWidth, h = canvas.clientHeight, top = labelTop(), lead = labelLead();
   for (const p of parts) {
     if (!p.el) continue;
-    p.vis = show * clamp((p.k - 0.75) / 0.25);
-    if (p.vis <= 0.01) continue;
+    const vis = show * clamp((p.k - 0.75) / 0.25);
+    if (vis <= 0.01 || !p.side) { p.el.style.opacity = 0; continue; }
     tmp.copy(p.anchor); p.g.localToWorld(tmp); tmp.project(camV);
-    p.sx = (tmp.x * .5 + .5) * w; p.sy = (-tmp.y * .5 + .5) * h;
-    dots.push(p);
-  }
-  for (const p of parts) {
-    if (!p.el) continue;
-    if (p.vis <= 0.01) { p.el.style.opacity = 0; p.side = undefined; continue; }
+    const x = (tmp.x * .5 + .5) * w, y = (-tmp.y * .5 + .5) * h;
+    const [bx, by] = labelSpots(p, x, y, w)[p.side];
+    const span = p.el.querySelector('span'), line = p.el.querySelector('b');
+    span.style.left = `${(bx - x).toFixed(1)}px`; span.style.top = `${(by - y).toFixed(1)}px`;
+    const vert = p.side.startsWith('up') || p.side.startsWith('down');
+    const back = vert ? p.side.startsWith('up') : bx < x;   // the line runs up or left
+    const from = back ? 3 - lead : 5, len = `${lead - 8}px`;
+    Object.assign(line.style, vert
+      ? { left: '-0.5px', top: `${from}px`, width: '1px', height: len }
+      : { top: '-0.5px', left: `${from}px`, width: len, height: '1px' });
+    p.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
     p.el.classList.toggle('on', hovered === p);
-    const ok = placeLabel(p, p.sx, p.sy, w, h, top, compact ? 18 : 30, compact, placed, solids, dots);
-    p.el.style.opacity = ok && p.sy > top && p.sy < h - 60 ? p.vis : 0;
+    p.el.style.opacity = y > top && y < h - 60 ? vis : 0;
   }
 }
 
@@ -975,6 +983,7 @@ function tick() {
     renderPass.scene = sceneH; renderPass.camera = camH;
     hovered = null; placeLabels(0);
   } else {
+    if (!labelsLaidOut) layoutLabels(t);
     const e = updateVR(ps, t);
     hovered = e > 0.6 ? pick() : null;
     document.body.style.cursor = hovered ? 'pointer' : '';
