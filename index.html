@@ -123,6 +123,11 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 .lbl.on i { background: var(--copper); border-color: var(--copper); transform: scale(1.5); }
 .lbl.on b { width: 40px; background: var(--copper); }
 .lbl.on span { color: var(--copper); border-color: rgba(236,143,85,.6); }
+/* phones: the label sits at the part's dot, its line and box are placed from script on any side */
+.labels.compact .lbl { display: block; font-size: 10px; letter-spacing: .03em; }
+.labels.compact .lbl i { position: absolute; left: -3.5px; top: -3.5px; }
+.labels.compact .lbl b { position: absolute; transition: background .2s; }
+.labels.compact .lbl span { position: absolute; width: max-content; white-space: pre-line; line-height: 1.3; padding: 3px 6px; }   /* names break where they hold a "\n" */
 
 .cursor { position: fixed; z-index: 30; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1px solid #fff; border-radius: 50%; pointer-events: none; transition: width .25s, height .25s, margin .25s, border-color .25s, background .25s; mix-blend-mode: difference; }
 .cursor.big { width: 64px; height: 64px; margin: -32px 0 0 -32px; border-color: var(--copper); background: rgba(236,143,85,.12); mix-blend-mode: normal; }
@@ -627,7 +632,7 @@ const gaugeTex = canvasTex(256, 256, (c, w, h) => {
   const a = val(1.2); c.strokeStyle = '#c0291f'; c.lineWidth = 6; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * 92, cy + Math.sin(a) * 92); c.stroke();
   c.fillStyle = '#c0291f'; c.beginPath(); c.arc(cx, cy, 10, 0, Math.PI * 2); c.fill();
 });
-part('Pannello comandi', [0, -0.6, 1.35], g => {
+part('Pannello\ncomandi', [0, -0.6, 1.35], g => {
   g.position.set(0, -0.87, 0.24);
   g.add(mesh(new RoundedBoxGeometry(1.26, 0.34, 0.36, 4, 0.04), M.graphite));
   const disp = mesh(new THREE.PlaneGeometry(0.34, 0.15), new THREE.MeshBasicMaterial({ map: displayTex, color: new THREE.Color(1.8, 1.8, 1.8) }), -0.3, 0.02, 0.181); g.add(disp);
@@ -636,13 +641,13 @@ part('Pannello comandi', [0, -0.6, 1.35], g => {
   g.add(mesh(new THREE.TorusGeometry(0.102, 0.01, 10, 48), M.steel, 0.38, 0.02, 0.19));
 }, { anchor: [-0.3, 0.12, 0.2], delay: 0.05 });
 
-part('Scheda elettronica', [0, -0.95, 0.55], g => {
+part('Scheda\nelettronica', [0, -0.95, 0.55], g => {
   g.position.set(0, -0.86, 0.0);
   g.add(mesh(new THREE.BoxGeometry(0.92, 0.24, 0.02), M.pcb));
   for (let i = 0; i < 9; i++) g.add(mesh(new THREE.BoxGeometry(0.05 + (i % 3) * 0.03, 0.04 + (i % 2) * 0.03, 0.03), i % 4 ? M.black : M.steelD, -0.38 + i * 0.095, ((i * 37) % 7) / 40 - 0.07, 0.02));
 }, { anchor: [-0.42, -0.06, 0.03], delay: 0.12 });
 
-part('Scambiatore primario a condensazione', [0, 0.55, 0.8], g => {
+part('Scambiatore primario\na condensazione', [0, 0.55, 0.8], g => {
   g.position.set(-0.05, 0.45, -0.1);
   const body = mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.42, 64), M.steel); body.rotation.x = Math.PI / 2; g.add(body);
   for (let i = 0; i < 5; i++) { const r = mesh(new THREE.TorusGeometry(0.343, 0.009, 8, 64), M.steelD, 0, 0, -0.17 + i * 0.085); g.add(r); }
@@ -659,7 +664,7 @@ part('Bruciatore', [0, -0.2, 1.75], g => {
   }
 }, { anchor: [0.15, 0.2, 0.03], delay: 0.18, rot: [0.2, -1.1, 0] });
 
-part('Elettrodo di accensione e rilevazione', [-0.85, 0.1, 1.85], g => {
+part('Elettrodo di accensione\ne rilevazione', [-0.85, 0.1, 1.85], g => {
   g.position.set(0.09, 0.56, 0.16);
   g.add(mesh(new THREE.BoxGeometry(0.1, 0.05, 0.015), M.steel));
   for (const x of [-0.02, 0.02]) { const c = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.06, 12), M.ceramic, x, 0, 0.03); c.rotation.x = Math.PI / 2; g.add(c); }
@@ -686,25 +691,25 @@ part('Circolatore', [-0.95, -0.5, 1.0], g => {
   g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 32).rotateX(Math.PI / 2), M.steel, 0, 0, 0.23));
 }, { anchor: [-0.08, 0.1, 0.15], delay: 0.16 });
 
-part('Scambiatore sanitario a piastre', [-1.15, 0.2, 0.7], g => {
+part('Scambiatore sanitario\na piastre', [-1.15, 0.2, 0.7], g => {
   g.position.set(-0.36, -0.12, -0.02);
   for (let i = 0; i < 10; i++) g.add(mesh(new RoundedBoxGeometry(0.2, 0.28, 0.009, 1, 0.003), i % 2 ? M.steel : M.steelD, 0, 0, -0.05 + i * 0.011));
   g.add(mesh(new THREE.BoxGeometry(0.22, 0.3, 0.012), M.steelD, 0, 0, 0.065));
 }, { anchor: [-0.1, 0.14, 0.07], delay: 0.22 });
 
-part('Vaso di espansione', [1.2, 0.55, 0.15], g => {
+part('Vaso di\nespansione', [1.2, 0.55, 0.15], g => {
   g.position.set(0.47, 0.45, -0.2);
   g.add(mesh(new THREE.CapsuleGeometry(0.11, 0.55, 8, 32), M.red));
   g.add(mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.06, 12), M.brass, 0, 0.42, 0));
 }, { anchor: [0.1, 0.25, 0.05], delay: 0.08 });
 
-part('Sifone della condensa', [0.8, -0.85, 1.2], g => {
+part('Sifone della\ncondensa', [0.8, -0.85, 1.2], g => {
   g.position.set(0.05, -0.55, 0.1);
   g.add(mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.22, 32), M.siphon));
   g.add(mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.04, 32), M.ceramic, 0, 0.12, 0));
 }, { anchor: [0.05, -0.08, 0.05], delay: 0.26 });
 
-part('Attacco aria-fumi', [0, 0.5, 0], g => {
+part('Attacco\naria-fumi', [0, 0.5, 0], g => {
   g.position.set(0, 1.18, -0.05);
   g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.26, 48), M.white));
   g.add(mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.28, 32), M.steelD));
@@ -799,7 +804,7 @@ function updateVR(p, t) {
   const tanH = Math.tan(THREE.MathUtils.degToRad(camV.fov / 2));
   const narrow = camV.aspect < 0.9;
   const share = narrow ? 1 : 0.56;
-  const far = Math.max(2.3 / tanH, 2.05 / (tanH * camV.aspect * share)) * (narrow ? 1.0 : 1.06);
+  const far = Math.max(2.3 / tanH, 2.05 / (tanH * camV.aspect * share)) * (narrow ? 1.08 : 1.06);   // a phone keeps side margins for the labels
   const z = lerp(lerp(9.5, 6.2, easeOut(v)), far, ease(e));
   camV.position.set(-0.3 + mouse.sx * 0.35, 0.25 - mouse.sy * 0.2 + lerp(0.4, 0, v), z);
   camV.lookAt(0, lerp(0.1, -0.05, e), 0.2);
@@ -826,14 +831,99 @@ function updateVR(p, t) {
   return e;
 }
 
+// screen rectangle of a world-space box, seen from the boiler camera
+const box3 = new THREE.Box3(), corner = new THREE.Vector3();
+function screenRect(obj, w, h) {
+  box3.setFromObject(obj);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < 8; i++) {
+    corner.set(i & 1 ? box3.max.x : box3.min.x, i & 2 ? box3.max.y : box3.min.y, i & 4 ? box3.max.z : box3.min.z).project(camV);
+    const sx = (corner.x * .5 + .5) * w, sy = (-corner.y * .5 + .5) * h;
+    x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
+  }
+  return [x0, y0, x1, y1];
+}
+const overlap = (a, b) => Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
+
+// phones: no room beside the outer parts, so each label tries its outer side, then above, below and inside,
+// and takes the spot that covers the fewest labels and parts; it keeps its spot unless another is clearly better
+const LEAD = 18;                                  // dot centre to label box
+const hudBlocks = [...document.querySelectorAll('.hud .corner, .hud .row > span')];
+function placeCompact(p, x, y, w, h, top, placed, solids, dots) {
+  const span = p.el.querySelector('span'), line = p.el.querySelector('b');
+  const sw = span.offsetWidth, sh = span.offsetHeight;
+  const cx = clamp(x - sw / 2, 8, w - 8 - sw);
+  const spots = {
+    out: p.left ? [x - LEAD - sw, y - sh / 2] : [x + LEAD, y - sh / 2],
+    up: [cx, y - LEAD - sh], down: [cx, y + LEAD],
+    in: p.left ? [x + LEAD, y - sh / 2] : [x - LEAD - sw, y - sh / 2],
+  };
+  const cost = name => {
+    const [bx, by] = spots[name], rc = [bx, by, bx + sw, by + sh];
+    const m = name === p.side ? 6 : 0;            // slack, so the bobbing can't push a label out of its spot
+    if (bx < 8 - m || bx + sw > w - 8 + m || by < top - m || by + sh > h - 60 + m) return Infinity;
+    let c = name === 'out' ? 0 : name === 'in' ? 900 : 300;
+    for (const o of placed) c += overlap(rc, o) * 4;
+    for (const o of solids) c += overlap(rc, o);
+    for (const o of dots) if (o !== p) c += overlap(rc, [o.sx - 8, o.sy - 8, o.sx + 8, o.sy + 8]) * 8;
+    return c;
+  };
+  let best = 'out', bestCost = Infinity;
+  for (const name in spots) { const c = cost(name); if (c < bestCost) { best = name; bestCost = c; } }
+  if (p.side && cost(p.side) <= bestCost + 400) best = p.side;
+  if (bestCost === Infinity) return false;
+  p.side = best;
+  const [bx, by] = spots[best];
+  placed.push([bx - 3, by - 3, bx + sw + 3, by + sh + 3]);
+  span.style.left = `${(bx - x).toFixed(1)}px`; span.style.top = `${(by - y).toFixed(1)}px`;
+  const vert = best === 'up' || best === 'down';
+  const back = vert ? best === 'up' : bx < x;     // the line runs up or left
+  const from = back ? 3 - LEAD : 5, len = `${LEAD - 8}px`;
+  Object.assign(line.style, vert
+    ? { left: '-0.5px', top: `${from}px`, width: '1px', height: len }
+    : { top: '-0.5px', left: `${from}px`, width: len, height: '1px' });
+  p.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+  return true;
+}
+
 function placeLabels(show) {
   const w = canvas.clientWidth, h = canvas.clientHeight;
+  const compact = w < 600;
+  if (compact !== labelsEl.classList.contains('compact')) {
+    labelsEl.classList.toggle('compact', compact);
+    for (const p of parts) if (p.el) { p.el.querySelector('span').style.cssText = p.el.querySelector('b').style.cssText = ''; p.side = p.flip = undefined; }
+  }
+  const placed = [], solids = [];
+  let top = 90;
+  if (compact && show) {
+    const base = labelsEl.getBoundingClientRect();
+    top = Math.max(...[...bar.children].map(el => el.getBoundingClientRect().bottom)) - base.top + 8;
+    for (const el of [...hudBlocks, ...copies.filter(c => c.el.style.visibility !== 'hidden').map(c => c.el)]) {   // HUD and text count as labels already in place
+      const r = el.getBoundingClientRect();
+      if (r.width) placed.push([r.left - base.left - 4, r.top - base.top - 4, r.right - base.left + 4, r.bottom - base.top + 4]);
+    }
+    solids.push(screenRect(frame, w, h));
+    for (const p of parts) if (p.phase !== 'cover' && p.k > 0.75) solids.push(screenRect(p.g, w, h));
+  }
+  const dots = [];
   for (const p of parts) {
     if (!p.el) continue;
-    const vis = show * clamp((p.k - 0.75) / 0.25);
-    if (vis <= 0.01) { p.el.style.opacity = 0; p.flip = undefined; continue; }
+    p.vis = show * clamp((p.k - 0.75) / 0.25);
+    if (p.vis <= 0.01) continue;
     tmp.copy(p.anchor); p.g.localToWorld(tmp); tmp.project(camV);
-    const x = (tmp.x * .5 + .5) * w, y = (-tmp.y * .5 + .5) * h;
+    p.sx = (tmp.x * .5 + .5) * w; p.sy = (-tmp.y * .5 + .5) * h;
+    dots.push(p);
+  }
+  for (const p of parts) {
+    if (!p.el) continue;
+    const vis = p.vis;
+    if (vis <= 0.01) { p.el.style.opacity = 0; p.flip = p.side = undefined; continue; }
+    const x = p.sx, y = p.sy;
+    if (compact) {
+      p.el.classList.toggle('on', hovered === p);
+      p.el.style.opacity = placeCompact(p, x, y, w, h, top, placed, solids, dots) && y > top && y < h - 60 ? vis : 0;
+      continue;
+    }
     const bw = p.el.offsetWidth;
     // leave the usual side only when the label runs off screen, and come back only with room to spare,
     // so the mouse parallax can't make it jump from side to side
