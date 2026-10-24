@@ -1,0 +1,913 @@
+<title>Banco MR</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Simulatore in realtà mista per la formazione su caldaie a condensazione e pompe di calore.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
+<style>
+/* Layout: a sticky full-screen "film" (night-indigo hero -> periwinkle daylight -> inside the lens), then a light editorial column. */
+:root {
+  --night: #1d2244;      /* hero gradient, top left */
+  --night-2: #3b3f6c;    /* hero gradient, bottom right */
+  --paper: #d4d9eb;      /* periwinkle daylight */
+  --paper-2: #e9ecf7;    /* raised light surfaces */
+  --ink: #0f1325;        /* text on light */
+  --snow: #f1f2f8;       /* text on dark */
+  --muted: #555c7a;
+  --copper: #ec8f55;     /* copper pipes: accent on dark */
+  --copper-ink: #a9531f; /* same accent, readable on light */
+  --flame: #8dbbff;      /* premix flame blue: the HUD colour */
+  --line: rgba(15, 19, 37, 0.14);
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+html { background: var(--paper); }
+body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+a { color: inherit; }
+::selection { background: var(--copper); color: var(--ink); }
+
+/* ---------- top bar ---------- */
+.bar {
+  position: fixed; inset: 0 0 auto; z-index: 20; color: var(--snow);
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 22px); padding-bottom: 18px;
+  padding-left: max(24px, 6vw, env(safe-area-inset-left, 0px)); padding-right: max(24px, 6vw, env(safe-area-inset-right, 0px));
+  pointer-events: none; transition: color .5s;
+}
+.bar.on-light { color: var(--ink); }
+.bar > * { pointer-events: auto; }
+.wordmark { font-family: var(--display); font-weight: 850; font-stretch: 125%; font-size: 21px; letter-spacing: -0.01em; text-decoration: none; display: flex; align-items: baseline; gap: 6px; }
+.wordmark small { font-family: var(--mono); font-weight: 500; font-size: 11px; letter-spacing: 0.12em; color: var(--copper); transition: color .5s; }
+.bar.on-light .wordmark small { color: var(--copper-ink); }
+.bar nav { display: flex; gap: clamp(20px, 5vw, 72px); font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.1em; text-transform: uppercase; }
+.bar nav a { text-decoration: none; opacity: .85; transition: opacity .2s; }
+.bar nav a:hover, .bar nav a:focus-visible { opacity: 1; }
+@media (max-width: 640px) { .bar nav a:not(.keep) { display: none; } }
+
+/* ---------- film ---------- */
+#film { position: relative; height: 580vh; }
+.stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; background: linear-gradient(135deg, var(--night), var(--night-2)); }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.grain { position: absolute; inset: -50%; pointer-events: none; opacity: .05; mix-blend-mode: overlay; animation: grain 1.2s steps(6) infinite; }
+@keyframes grain { 0%{transform:translate(0,0)} 20%{transform:translate(-3%,2%)} 40%{transform:translate(2%,-3%)} 60%{transform:translate(-2%,-1%)} 80%{transform:translate(3%,3%)} 100%{transform:translate(0,0)} }
+.lensmask { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 38%, rgba(10,12,30,.55) 52%, #0a0c1e 72%); }
+.vrvignette { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(8,10,26,.8) 100%); }
+.flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 50%, #eef4ff 0%, #8dbbff 45%, #1d2244 100%); }
+
+.copy { position: absolute; z-index: 5; will-change: opacity; }
+.copy:not(.hero) { opacity: 0; visibility: hidden; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--copper); display: block; margin-bottom: 18px; }
+.eyebrow.ink { color: var(--copper-ink); }
+.eyebrow.blue { color: var(--flame); }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+
+/* hero: headline split around the floating headset */
+.copy.hero { inset: 0; color: var(--snow); pointer-events: none; }
+.copy.hero a { pointer-events: auto; }
+.hero h1 { font-size: clamp(46px, 7.6vw, 128px); line-height: .9; font-weight: 850; font-stretch: 125%; letter-spacing: -0.03em; position: absolute; margin: 0; }
+.hero .h-top { top: 15vh; right: 6vw; text-align: right; }
+.hero .h-bottom { bottom: 12vh; left: 6vw; }
+.hero .h-bottom span { display: block; padding-left: 1.6em; }
+.hero .side { position: absolute; right: 6vw; bottom: 12vh; width: min(25rem, 34vw); }
+.hero .side p { margin: 0; color: rgba(241,242,248,.78); font-size: 17px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; align-items: center; }
+.btn { font-family: var(--mono); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; padding: 14px 20px; border-radius: 999px; transition: transform .25s, background .25s, color .25s; display: inline-flex; gap: 10px; align-items: center; }
+.btn.solid { background: var(--snow); color: var(--ink); }
+.btn.solid:hover, .btn.solid:focus-visible { background: var(--copper); transform: translateY(-2px); }
+.btn.dark { background: var(--ink); color: var(--snow); }
+.btn.dark:hover, .btn.dark:focus-visible { background: var(--copper-ink); transform: translateY(-2px); }
+.btn:focus-visible, .bar a:focus-visible { outline: 2px solid var(--flame); outline-offset: 3px; }
+.scroll { position: absolute; left: 50%; bottom: 4vh; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgba(241,242,248,.6); }
+.scroll i { width: 30px; height: 30px; border: 1px solid currentColor; border-radius: 50%; display: grid; place-items: center; font-style: normal; animation: bob 2s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(4px); } }
+
+/* daylight scene: dark text on periwinkle */
+.copy.day { right: 6vw; top: 50%; transform: translateY(-50%); width: min(34rem, 42vw); color: var(--ink); }
+.copy.day h2 { font-size: clamp(36px, 4.6vw, 76px); line-height: .92; font-weight: 850; font-stretch: 125%; letter-spacing: -0.03em; }
+.copy.day h2 span { display: block; }
+.copy.day h2 .soft { color: #8d93ad; }
+.copy.day p { margin: 24px 0 0; color: #2c3150; max-width: 30rem; }
+.spec { margin: 30px 0 0; display: grid; gap: 7px; font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.spec b { font-weight: 500; color: var(--ink); }
+
+/* inside the headset */
+.copy.vr { left: 6vw; top: 50%; transform: translateY(-50%); max-width: 23rem; color: var(--snow); }
+.copy.vr h2 { font-size: clamp(30px, 3.6vw, 52px); line-height: 1; font-weight: 800; font-stretch: 115%; letter-spacing: -0.025em; }
+.copy.vr p { color: rgba(241,242,248,.78); margin: 20px 0 0; font-size: 17px; }
+.hovertip { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: rgba(241,242,248,.5) !important; }
+
+.hud { position: absolute; inset: 0; pointer-events: none; opacity: 0; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--flame); }
+.hud .corner { position: absolute; width: 28px; height: 28px; border-color: rgba(141,187,255,.55); border-style: solid; border-width: 0; }
+.hud .tl { top: 84px; left: 28px; border-top-width: 1px; border-left-width: 1px; }
+.hud .tr { top: 84px; right: 28px; border-top-width: 1px; border-right-width: 1px; }
+.hud .bl { bottom: 28px; left: 28px; border-bottom-width: 1px; border-left-width: 1px; }
+.hud .br { bottom: 28px; right: 28px; border-bottom-width: 1px; border-right-width: 1px; }
+.hud .row { position: absolute; left: 64px; right: 64px; display: flex; justify-content: space-between; gap: 16px; }
+.hud .top { top: 92px; }
+.hud .bottom { bottom: 36px; }
+.hud .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--flame); margin-right: 8px; box-shadow: 0 0 10px var(--flame); animation: blink 1.6s infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+.hud .num { font-variant-numeric: tabular-nums; }
+
+.labels { position: absolute; inset: 0; pointer-events: none; }
+.lbl { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 10px; opacity: 0; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; color: var(--snow); will-change: transform, opacity; }
+.lbl i { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--snow); background: rgba(16,19,42,.6); flex: none; transition: background .2s, border-color .2s, transform .2s; }
+.lbl b { width: 26px; height: 1px; background: rgba(241,242,248,.45); flex: none; transition: width .25s, background .2s; }
+.lbl span { padding: 4px 8px; background: rgba(16,19,42,.55); border: 1px solid rgba(241,242,248,.14); border-radius: 3px; backdrop-filter: blur(4px); transition: color .2s, border-color .2s; }
+.lbl.flip { flex-direction: row-reverse; }
+.lbl.on i { background: var(--copper); border-color: var(--copper); transform: scale(1.5); }
+.lbl.on b { width: 40px; background: var(--copper); }
+.lbl.on span { color: var(--copper); border-color: rgba(236,143,85,.6); }
+
+.cursor { position: fixed; z-index: 30; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1px solid #fff; border-radius: 50%; pointer-events: none; transition: width .25s, height .25s, margin .25s, border-color .25s, background .25s; mix-blend-mode: difference; }
+.cursor.big { width: 64px; height: 64px; margin: -32px 0 0 -32px; border-color: var(--copper); background: rgba(236,143,85,.12); mix-blend-mode: normal; }
+@media (pointer: coarse) { .cursor { display: none; } }
+
+@media (max-width: 760px) {
+  .hero .h-top { top: 12vh; right: 20px; }
+  .hero .h-bottom { bottom: 33vh; left: 20px; }
+  .hero .side { left: 20px; right: 20px; bottom: 7vh; width: auto; }
+  .scroll { display: none; }
+  .copy.day, .copy.vr { left: 20px; right: 20px; top: auto; bottom: 8vh; transform: none; width: auto; max-width: none; }
+  .hud .row { left: 40px; right: 40px; }
+  .hud .tl, .hud .tr { top: 72px; }
+  .hud .top { top: 80px; }
+  .hud .hide-sm { display: none; }
+  .lbl { font-size: 10px; }
+  .lbl b { width: 14px; }
+}
+
+/* ---------- after the film: periwinkle daylight ---------- */
+.page { position: relative; z-index: 2; background: var(--paper); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1160px; margin: 0 auto; }
+.block { padding-block: clamp(80px, 12vw, 150px); border-top: 1px solid var(--line); }
+.block:first-child { border-top: 0; }
+.block .eyebrow { color: var(--copper-ink); }
+.block h2 { font-size: clamp(38px, 5.4vw, 80px); line-height: .94; font-weight: 850; font-stretch: 125%; letter-spacing: -0.03em; max-width: 14ch; }
+.lead { color: #2c3150; max-width: 58ch; margin: 26px 0 0; font-size: 20px; }
+.steps { list-style: none; padding: 0; margin: 64px 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; counter-reset: s; }
+.steps li { counter-increment: s; border-top: 1px solid var(--ink); padding-top: 20px; min-width: 0; }
+.steps li::before { content: "Passo " counter(s); font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--copper-ink); }
+.steps h3 { font-size: 25px; font-weight: 800; font-stretch: 115%; margin-top: 14px; letter-spacing: -0.015em; }
+.steps p { color: #3a3f5c; margin: 12px 0 0; font-size: 17px; }
+@media (max-width: 820px) { .steps { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
+
+.proc { margin: 56px 0 0; border-top: 1px solid var(--line); }
+.proc-row { display: grid; grid-template-columns: 10rem minmax(0, 1fr) auto; gap: 24px; align-items: baseline; padding: 22px 0; border-bottom: 1px solid var(--line); }
+.proc-row .app { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.proc-row h3 { font-size: clamp(19px, 2vw, 25px); font-weight: 650; font-stretch: 100%; letter-spacing: -0.01em; }
+.proc-row .state { font-family: var(--mono); font-size: 12px; color: #2f4f9a; border: 1px solid rgba(47,79,154,.35); padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+@media (max-width: 640px) { .proc-row { grid-template-columns: minmax(0, 1fr); gap: 6px; } .proc-row .state { justify-self: start; } }
+
+.who { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 56px; border-top: 1px solid var(--line); }
+.who div { padding: 26px 24px 26px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.who h3 { font-size: 23px; font-weight: 750; font-stretch: 110%; }
+.who p { margin: 8px 0 0; color: #3a3f5c; font-size: 17px; max-width: 40ch; }
+@media (max-width: 640px) { .who { grid-template-columns: minmax(0, 1fr); } }
+
+.pilot-band { background: linear-gradient(135deg, var(--night), var(--night-2)); color: var(--snow); border-radius: 10px; padding: clamp(32px, 5vw, 64px); display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 56px; align-items: end; }
+.pilot-band .eyebrow { color: var(--copper); }
+.pilot-band h2 { max-width: 12ch; }
+.pilot-band .lead { color: rgba(241,242,248,.78); }
+.card { border: 1px solid rgba(241,242,248,.16); background: rgba(255,255,255,.05); border-radius: 8px; padding: 28px; min-width: 0; }
+.card dl { margin: 0; display: grid; gap: 18px; }
+.card dt { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: rgba(241,242,248,.55); }
+.card dd { margin: 4px 0 0; font-size: 19px; overflow-wrap: anywhere; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.copybtn { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; background: none; border: 1px solid rgba(241,242,248,.25); color: rgba(241,242,248,.7); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.copybtn:hover, .copybtn:focus-visible { color: var(--snow); border-color: var(--snow); }
+.placeholder { color: var(--copper); }
+@media (max-width: 820px) { .pilot-band { grid-template-columns: minmax(0, 1fr); gap: 36px; } }
+
+footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+@media (prefers-reduced-motion: reduce) { .grain, .hud .dot, .scroll i { animation: none; } }
+</style>
+
+<header class="bar" id="bar">
+  <a class="wordmark" href="#top">banco<small>MR</small></a>
+  <nav aria-label="Sezioni">
+    <a href="#come">Come funziona</a>
+    <a href="#procedure">Procedure</a>
+    <a href="#pilot" class="keep">Pilot 2027</a>
+  </nav>
+</header>
+
+<div class="cursor" id="cursor" aria-hidden="true"></div>
+
+<main id="top">
+  <section id="film" aria-label="Presentazione">
+    <div class="stage">
+      <canvas id="gl" aria-hidden="true"></canvas>
+      <div class="labels" id="labels" aria-hidden="true"></div>
+      <div class="lensmask" id="lensmask"></div>
+      <div class="vrvignette" id="vrvignette"></div>
+      <canvas class="grain" id="grain" aria-hidden="true"></canvas>
+
+      <div class="hud" id="hud" aria-hidden="true">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="row top"><span><span class="dot"></span>Sessione in corso</span><span class="hide-sm">Procedura 02 · Manutenzione ordinaria</span></div>
+        <div class="row bottom"><span>Allievo n. 07</span><span class="num" id="hudtime">00:00</span><span class="hide-sm">Errori 0 · Aiuti 0</span></div>
+      </div>
+
+      <div class="copy hero" data-range="-1,0.12">
+        <h1 class="h-top" data-par="-14">La caldaia</h1>
+        <h1 class="h-bottom" data-par="14">entra<span>in aula.</span></h1>
+        <div class="side">
+          <span class="eyebrow">Formazione termoidraulica in realtà mista</span>
+          <p>Gli allievi smontano, diagnosticano e riparano caldaie a condensazione e pompe di calore virtuali, posate sul banco vero del laboratorio.</p>
+          <div class="actions"><a class="btn solid" href="#pilot">Prenota una demo</a></div>
+        </div>
+        <div class="scroll" aria-hidden="true">Scorri <i>↓</i></div>
+      </div>
+
+      <div class="copy day" data-range="0.15,0.31">
+        <span class="eyebrow ink">Il visore</span>
+        <h2><span class="soft">Niente PC.</span><span>Niente cavi.</span></h2>
+        <p>Un visore autonomo per allievo, in aula. Vedi i compagni, il docente e il banco: la caldaia si aggiunge alla stanza.</p>
+        <div class="spec">
+          <span>Visore: <b>Meta Quest 3S</b></span>
+          <span>Sessione: <b>10–20 minuti</b></span>
+          <span>Report: <b>un file per allievo</b></span>
+        </div>
+      </div>
+
+      <div class="copy vr" data-range="0.47,0.63">
+        <span class="eyebrow blue">Dentro il visore</span>
+        <h2>Una caldaia sul banco, a grandezza reale.</h2>
+        <p>L'allievo la posa sul banco del laboratorio, ci gira intorno e la apre con i controller. Il pannello accanto mostra il passo da fare.</p>
+      </div>
+
+      <div class="copy vr" data-range="0.72,1.5">
+        <span class="eyebrow blue">Ogni pezzo al suo posto</span>
+        <h2>Si indica, si smonta, si rimonta.</h2>
+        <p>La procedura controlla ogni gesto. Se l'allievo sbaglia, il pannello lo dice e mostra il pezzo giusto. Tempi, errori e aiuti finiscono nel report.</p>
+        <p class="hovertip">Passa il mouse sui componenti</p>
+      </div>
+
+      <div class="flash" id="flash"></div>
+    </div>
+  </section>
+
+  <div class="page">
+    <div class="wrap">
+      <section class="block" id="come">
+        <span class="eyebrow">Come funziona</span>
+        <h2>Dieci minuti di simulazione prima del banco vero.</h2>
+        <p class="lead">Non sostituisce il laboratorio: lo prepara. In VR si fa quello che al banco costa, è pericoloso o non si vede: aprire il generatore, provocare un guasto, ripetere finché la sequenza è giusta.</p>
+        <ol class="steps">
+          <li><h3>Posa la caldaia</h3><p>Punti il banco con il controller e la caldaia compare, appoggiata e girata verso di te.</p></li>
+          <li><h3>Segui la procedura</h3><p>Manutenzione, guasti da diagnosticare, componenti dell'impianto. Un pannello guida un passo alla volta.</p></li>
+          <li><h3>Leggi il report</h3><p>Per ogni allievo tempi, errori e aiuti, passo per passo, in un file che si apre con Excel.</p></li>
+        </ol>
+      </section>
+
+      <section class="block" id="procedure">
+        <span class="eyebrow">Nel prototipo, oggi</span>
+        <h2>Quattro procedure, due apparecchi.</h2>
+        <p class="lead">Caldaia murale a condensazione e pompa di calore aria-acqua monoblocco in R290, generiche e senza marchio. I contenuti sono scritti dai manuali tecnici e passano dalla revisione di un docente esperto prima dell'uso in aula.</p>
+        <div class="proc">
+          <div class="proc-row"><span class="app">Caldaia</span><h3>Manutenzione ordinaria: elettrodo e sifone della condensa</h3><span class="state">in revisione</span></div>
+          <div class="proc-row"><span class="app">Caldaia</span><h3>Guasto: la caldaia va in blocco e non si accende</h3><span class="state">in revisione</span></div>
+          <div class="proc-row"><span class="app">Caldaia</span><h3>Guasto: pressione bassa, componenti dell'impianto</h3><span class="state">in revisione</span></div>
+          <div class="proc-row"><span class="app">Pompa di calore</span><h3>Pompa di calore aria-acqua: componenti e ciclo</h3><span class="state">in revisione</span></div>
+        </div>
+      </section>
+
+      <section class="block" id="per-chi">
+        <span class="eyebrow">Per chi</span>
+        <h2>Pensato per chi insegna impianti.</h2>
+        <div class="who">
+          <div><h3>CFP e percorsi IeFP</h3><p>Operatore e tecnico termoidraulico, dal primo anno.</p></div>
+          <div><h3>Scuole edili</h3><p>Corsi brevi di manutenzione e aggiornamento per installatori.</p></div>
+          <div><h3>ITS e IPSIA</h3><p>Area energia e manutenzione e assistenza tecnica.</p></div>
+          <div><h3>Academy dei produttori</h3><p>Procedure e apparecchi su misura per la rete di assistenza.</p></div>
+        </div>
+      </section>
+
+      <section class="block" id="pilot">
+        <div class="pilot-band">
+          <div>
+            <span class="eyebrow">Pilot 2027</span>
+            <h2>Cerchiamo tre enti per il primo pilot.</h2>
+            <p class="lead">Una demo in aula di mezz'ora, con i vostri docenti. Poi, se vi convince, un semestre di prova sui vostri corsi.</p>
+          </div>
+          <div class="card">
+            <dl>
+              <div><dt>Referente</dt><dd class="placeholder">Nome Cognome</dd></div>
+              <div><dt>Email</dt><dd><span id="mail" class="placeholder">nome@dominio.it</span><button class="copybtn" type="button" id="copymail">Copia</button></dd></div>
+              <div><dt>Telefono</dt><dd class="placeholder">+39 000 000 0000</dd></div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <span>banco MR · nome provvisorio · prototipo, ottobre 2026</span>
+        <span>Meta Quest è un marchio di Meta Platforms. Apparecchi generici, senza marchio.</span>
+      </footer>
+    </div>
+  </div>
+</main>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script>
+// Film-grain texture and the copy button run even if WebGL never loads.
+(function () {
+  const g = document.getElementById('grain');
+  const s = 256; g.width = s; g.height = s;
+  const c = g.getContext('2d'); const img = c.createImageData(s, s);
+  for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+  c.putImageData(img, 0, 0);
+  g.style.backgroundImage = 'url(' + g.toDataURL() + ')';
+  g.style.width = g.style.height = '200%'; g.width = g.height = 1;
+
+  const btn = document.getElementById('copymail');
+  btn.addEventListener('click', () => {
+    const t = document.getElementById('mail').textContent;
+    const done = () => { btn.textContent = 'Copiata'; setTimeout(() => (btn.textContent = 'Copia'), 1600); };
+    const select = () => { const r = document.createRange(); r.selectNodeContents(document.getElementById('mail')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); };
+    try { navigator.clipboard.writeText(t).then(done, select); } catch (e) { select(); }
+  });
+})();
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const canvas = document.getElementById('gl');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch (e) {
+  document.documentElement.classList.add('nogl');
+  throw e;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envTex = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+
+// ---------- helpers ----------
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const range = (x, a, b) => clamp((x - a) / (b - a));
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+
+const M = {
+  strip:   new THREE.MeshBasicMaterial({ color: new THREE.Color(0xd4884e).multiplyScalar(3.2) }),
+  white:   new THREE.MeshPhysicalMaterial({ color: 0xcfccc6, roughness: .42, clearcoat: .35, clearcoatRoughness: .3 }),
+  cover:   new THREE.MeshPhysicalMaterial({ color: 0xcfccc6, roughness: .42, clearcoat: .35, clearcoatRoughness: .3, transparent: true }),
+  graphite:new THREE.MeshStandardMaterial({ color: 0x2a2e34, roughness: .55, metalness: .35 }),
+  steel:   new THREE.MeshStandardMaterial({ color: 0xa9afb7, metalness: 1, roughness: .34 }),
+  steelD:  new THREE.MeshStandardMaterial({ color: 0x8d939b, metalness: 1, roughness: .42 }),
+  copper:  new THREE.MeshStandardMaterial({ color: 0xc7764a, metalness: 1, roughness: .28 }),
+  brass:   new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 1, roughness: .34 }),
+  red:     new THREE.MeshPhysicalMaterial({ color: 0xa8231c, roughness: .4, clearcoat: .7 }),
+  black:   new THREE.MeshStandardMaterial({ color: 0x141619, roughness: .6, metalness: .1 }),
+  pump:    new THREE.MeshPhysicalMaterial({ color: 0x2c4660, roughness: .38, clearcoat: .5 }),
+  siphon:  new THREE.MeshPhysicalMaterial({ color: 0xf2f2ee, roughness: .22, transparent: true, opacity: .82, clearcoat: .8 }),
+  pcb:     new THREE.MeshStandardMaterial({ color: 0x1d5638, roughness: .55 }),
+  ceramic: new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: .5 }),
+  flame:   new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 1.4, 4.5) }),
+};
+
+for (const m of Object.values(M)) if ('envMapIntensity' in m) m.envMapIntensity = 0.75;
+function mesh(geo, mat, x = 0, y = 0, z = 0) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; }
+function tube(points, r, mat) {
+  const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)), false, 'catmullrom', .2);
+  return new THREE.Mesh(new THREE.TubeGeometry(curve, 64, r, 12, false), mat);
+}
+function roundedRect(target, w, h, r) {
+  const x = -w / 2, y = -h / 2;
+  target.moveTo(x + r, y); target.lineTo(x + w - r, y); target.quadraticCurveTo(x + w, y, x + w, y + r);
+  target.lineTo(x + w, y + h - r); target.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  target.lineTo(x + r, y + h); target.quadraticCurveTo(x, y + h, x, y + h - r);
+  target.lineTo(x, y + r); target.quadraticCurveTo(x, y, x + r, y);
+  return target;
+}
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  t.redraw = () => { draw(c.getContext('2d'), w, h); t.needsUpdate = true; };
+  t.redraw();
+  return t;
+}
+
+// ================= SCENE A: the headset =================
+const sceneH = new THREE.Scene();
+sceneH.environment = envTex;
+const camH = new THREE.PerspectiveCamera(30, 1, 0.05, 50);
+
+// background: diagonal gradient that goes from night indigo to periwinkle daylight
+const BG_NIGHT = [new THREE.Color('#1d2244'), new THREE.Color('#3b3f6c')];
+const BG_DAY = [new THREE.Color('#c7cde5'), new THREE.Color('#dfe3f2')];
+const bgA = new THREE.Color(), bgB = new THREE.Color();
+let bgMix = -1;
+const bgTex = canvasTex(256, 256, () => {});
+bgTex.paint = m => {
+  bgA.lerpColors(BG_NIGHT[0], BG_DAY[0], m); bgB.lerpColors(BG_NIGHT[1], BG_DAY[1], m);
+  const c = bgTex.image.getContext('2d'), g = c.createLinearGradient(0, 0, 256, 256);
+  g.addColorStop(0, '#' + bgA.getHexString(THREE.SRGBColorSpace)); g.addColorStop(1, '#' + bgB.getHexString(THREE.SRGBColorSpace));
+  c.fillStyle = g; c.fillRect(0, 0, 256, 256); bgTex.needsUpdate = true;
+};
+sceneH.background = bgTex;
+
+const hemiH = new THREE.HemisphereLight(0xdfe4ff, 0x30335a, .7); sceneH.add(hemiH);
+const keyH = new THREE.DirectionalLight(0xffffff, 1.6); keyH.position.set(-3, 4, 5); sceneH.add(keyH);
+const rimH = new THREE.DirectionalLight(0x7d6bff, 5.0); rimH.position.set(3.5, 1.5, -4); sceneH.add(rimH);
+const rim2H = new THREE.DirectionalLight(0x6f86ff, 3.0); rim2H.position.set(-4, -1, -3); sceneH.add(rim2H);
+const warmH = new THREE.PointLight(0xec8f55, 3, 8, 2); warmH.position.set(-1.5, -1.8, 1.5); sceneH.add(warmH);
+
+// render target that shows the VR scene inside the lenses
+const lensRT = new THREE.WebGLRenderTarget(768, 768, { type: THREE.HalfFloatType });
+
+// knit texture for the head strap
+const knitTex = canvasTex(256, 256, (c, w, h) => {
+  c.fillStyle = '#2b2a35'; c.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 4) for (let x = 0; x < w; x += 4) {
+    const v = 40 + Math.random() * 30 + ((x + y) % 8 === 0 ? 18 : 0);
+    c.fillStyle = `rgb(${v},${v - 2},${v + 12})`; c.fillRect(x, y, 3, 3);
+  }
+});
+knitTex.wrapS = knitTex.wrapT = THREE.RepeatWrapping; knitTex.repeat.set(3, 3); knitTex.anisotropy = 8;
+
+const H = {
+  body:  new THREE.MeshPhysicalMaterial({ color: 0x15131b, roughness: .5, metalness: .05, clearcoat: .35, clearcoatRoughness: .35 }),
+  visor: new THREE.MeshPhysicalMaterial({ color: 0x050409, roughness: .12, clearcoat: 1, clearcoatRoughness: .05 }),
+  gasket:new THREE.MeshStandardMaterial({ color: 0x232436, roughness: .95 }),
+  inner: new THREE.MeshStandardMaterial({ color: 0x1a1b29, roughness: .8 }),
+  knit:  new THREE.MeshStandardMaterial({ color: 0xffffff, map: knitTex, bumpMap: knitTex, bumpScale: .01, roughness: 1, transparent: true }),
+  rubber:new THREE.MeshPhysicalMaterial({ color: 0x18161f, roughness: .55, clearcoat: .2 }),
+  glow:  new THREE.MeshBasicMaterial({ color: new THREE.Color(0x7d6bff).multiplyScalar(1.6) }),
+  mark:  null,
+};
+
+// bend a geometry: narrower towards the face, front face curving back at the sides
+function shapeShell(geo, zBack, zFront, backScale, curve) {
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    let x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const k = clamp((z - zBack) / (zFront - zBack));
+    const f = lerp(backScale, 1, k);
+    x *= f; y *= f;
+    pos.setXYZ(i, x, y, z - curve * k * (x / 0.95) ** 2);
+  }
+  geo.attributes.position.needsUpdate = true;
+}
+function band(points, thick, width, mat) {
+  const path = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)));
+  const s = new THREE.Shape(); s.moveTo(-width / 2, -thick / 2); s.lineTo(width / 2, -thick / 2); s.lineTo(width / 2, thick / 2); s.lineTo(-width / 2, thick / 2); s.closePath();   // shape x follows the path normal
+  return new THREE.Mesh(new THREE.ExtrudeGeometry(s, { steps: 120, bevelEnabled: false, extrudePath: path }), mat);
+}
+
+const headset = new THREE.Group();
+(function buildHeadset() {
+  // body: a soft pillow, tapering towards the face
+  const bodyGeo = new THREE.ExtrudeGeometry(roundedRect(new THREE.Shape(), 1.66, 0.84, 0.34),
+    { depth: 0.34, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.1, bevelSegments: 12, curveSegments: 40 });
+  bodyGeo.translate(0, 0, -0.17);
+  shapeShell(bodyGeo, -0.32, 0.32, 0.88, 0.07);
+  headset.add(new THREE.Mesh(bodyGeo, H.body));
+
+  // glossy front visor following the same curve
+  const visorGeo = new THREE.ExtrudeGeometry(roundedRect(new THREE.Shape(), 1.58, 0.76, 0.3),
+    { depth: 0.01, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.03, bevelSegments: 6, curveSegments: 40 });
+  visorGeo.translate(0, 0, 0.3);
+  shapeShell(visorGeo, -1, 0, 1, 0.07);
+  headset.add(new THREE.Mesh(visorGeo, H.visor));
+
+  // wordmark on the visor
+  const markTex = canvasTex(512, 128, (c, w, h) => {
+    c.clearRect(0, 0, w, h); c.fillStyle = 'rgba(225,228,245,0.82)';
+    c.font = '850 64px Archivo, Arial, sans-serif'; try { c.fontStretch = 'ultra-expanded'; } catch (e) {}
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('banco', w / 2, h / 2 + 4);
+  });
+  H.mark = new THREE.MeshBasicMaterial({ map: markTex, transparent: true, depthWrite: false });
+  headset.add(mesh(new THREE.PlaneGeometry(0.42, 0.105), H.mark, 0.12, 0.02, 0.338));
+  // a thin copper status light under the visor, and two buttons on the underside
+  headset.add(mesh(new THREE.BoxGeometry(0.22, 0.012, 0.01), M.strip, 0, -0.37, 0.33));
+  for (const x of [-0.5, -0.38]) headset.add(mesh(new THREE.CapsuleGeometry(0.018, 0.05, 4, 12).rotateZ(Math.PI / 2), H.rubber, x, -0.53, 0.05));
+
+  // facial interface: soft gasket around the lenses
+  const outer = roundedRect(new THREE.Shape(), 1.5, 0.78, 0.3);
+  outer.holes.push(roundedRect(new THREE.Path(), 1.24, 0.54, 0.24));
+  const gasket = mesh(new THREE.ExtrudeGeometry(outer, { depth: 0.14, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04, bevelSegments: 6, curveSegments: 32 }), H.gasket, 0, 0, -0.5);
+  headset.add(gasket);
+  const back = mesh(new THREE.PlaneGeometry(1.3, 0.6), H.inner, 0, 0, -0.325); back.rotation.y = Math.PI; headset.add(back);
+
+  // lenses: they show the VR scene
+  const lensMat = new THREE.MeshBasicMaterial({ map: lensRT.texture });
+  for (const x of [-0.33, 0.33]) {
+    const l = mesh(new THREE.CircleGeometry(0.22, 64), lensMat, x, 0.03, -0.33); l.rotation.y = Math.PI; headset.add(l);
+    headset.add(mesh(new THREE.TorusGeometry(0.228, 0.022, 14, 64), H.rubber, x, 0.03, -0.335));
+    headset.add(mesh(new THREE.TorusGeometry(0.25, 0.004, 8, 64), H.glow, x, 0.03, -0.34));
+    const coat = mesh(new THREE.CircleGeometry(0.22, 64), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: .02, transparent: true, opacity: .07, clearcoat: 1 }), x, 0.03, -0.338);
+    coat.rotation.y = Math.PI; headset.add(coat);
+  }
+
+  // straps: side arms, knit rear band (tilted down behind the head), double top strap
+  for (const sx of [-1, 1]) headset.add(mesh(new RoundedBoxGeometry(0.06, 0.17, 0.46, 3, 0.025), H.rubber, sx * 0.86, 0, -0.5));
+  const rear = [];
+  for (let i = 0; i <= 32; i++) { const t = (i / 32) * Math.PI; rear.push([Math.cos(t) * 0.88, 0, -0.66 - Math.sin(t) * 1.22]); }
+  const rearBand = band(rear, 0.035, 0.2, H.knit); rearBand.rotation.x = -0.22; rearBand.position.y = 0.1; headset.add(rearBand);
+  for (const x of [-0.08, 0.08]) headset.add(band([[x, 0.46, -0.14], [x, 0.8, -0.6], [x, 0.7, -1.3], [x, 0.25, -1.72], [x, -0.24, -1.84]], 0.022, 0.06, H.knit));
+})();
+sceneH.add(headset);
+
+// ================= SCENE B: inside the headset =================
+const sceneV = new THREE.Scene();
+sceneV.background = new THREE.Color(0x10142c);
+sceneV.fog = new THREE.Fog(0x10142c, 7, 18);
+sceneV.environment = envTex;
+const camV = new THREE.PerspectiveCamera(36, 1, 0.05, 60);
+const camLens = new THREE.PerspectiveCamera(40, 1, 0.05, 60);
+
+sceneV.add(new THREE.HemisphereLight(0x9fb8d6, 0x10142c, .2));
+const keyV = new THREE.DirectionalLight(0xfff3e6, 1.5); keyV.position.set(2.5, 5, 4); sceneV.add(keyV);
+const rimV = new THREE.DirectionalLight(0x74b8ff, 2.0); rimV.position.set(-4, 2.5, -2); sceneV.add(rimV);
+const warmV = new THREE.PointLight(0xd4884e, 10, 9, 2); warmV.position.set(0, -2.2, 2); sceneV.add(warmV);
+
+// room: test wall, floor grid, a light shaft and dust
+sceneV.add(mesh(new THREE.BoxGeometry(3.2, 4.6, 0.06), new THREE.MeshStandardMaterial({ color: 0x161a36, roughness: .95, envMapIntensity: .15 }), 0, -0.1, -0.46));
+const grid = new THREE.GridHelper(40, 80, 0x4b3b5a, 0x272d55); grid.position.y = -2.4;
+grid.material.transparent = true; grid.material.opacity = .55; sceneV.add(grid);
+const beamTex = canvasTex(4, 256, (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(160,200,255,0.0)'); g.addColorStop(0.15, 'rgba(160,200,255,0.22)'); g.addColorStop(1, 'rgba(160,200,255,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); });
+const beam = mesh(new THREE.ConeGeometry(2.6, 7, 48, 1, true), new THREE.MeshBasicMaterial({ map: beamTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, opacity: .28 }), 0, 1.6, 0.4);
+sceneV.add(beam);
+const dustGeo = new THREE.BufferGeometry();
+{ const n = 600, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = (Math.random() - .5) * 9; a[i * 3 + 1] = (Math.random() - .5) * 6; a[i * 3 + 2] = (Math.random() - .3) * 7; } dustGeo.setAttribute('position', new THREE.BufferAttribute(a, 3)); }
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ size: .018, color: 0xcfd8e4, transparent: true, opacity: .5, blending: THREE.AdditiveBlending, depthWrite: false }));
+sceneV.add(dust);
+
+// procedure panel floating next to the boiler, as in the app
+const panelTex = canvasTex(1024, 620, (c, w, h) => {
+  c.clearRect(0, 0, w, h);
+  c.fillStyle = 'rgba(13,17,23,0.92)'; c.beginPath(); c.roundRect(4, 4, w - 8, h - 8, 26); c.fill();
+  c.strokeStyle = 'rgba(116,184,255,0.55)'; c.lineWidth = 3; c.stroke();
+  c.fillStyle = '#d4884e'; c.font = '500 30px "IBM Plex Mono", monospace'; c.fillText('PASSO 3 DI 22', 56, 86);
+  c.fillStyle = '#8d959e'; c.fillText('MANUTENZIONE ORDINARIA', 56, 132);
+  c.fillStyle = '#ebe8e2'; c.font = '700 56px Archivo, Arial, sans-serif';
+  const lines = ['Togli il mantello frontale', 'per arrivare ai componenti', 'interni.'];
+  lines.forEach((l, i) => c.fillText(l, 56, 240 + i * 70));
+  c.fillStyle = 'rgba(116,184,255,0.16)'; c.beginPath(); c.roundRect(56, 480, 300, 84, 14); c.fill();
+  c.strokeStyle = 'rgba(116,184,255,0.7)'; c.lineWidth = 2; c.stroke();
+  c.fillStyle = '#cfe6ff'; c.font = '500 34px "IBM Plex Mono", monospace'; c.fillText('Mostra il pezzo', 82, 534);
+});
+const panelMat = new THREE.MeshBasicMaterial({ map: panelTex, transparent: true, depthWrite: false });
+const panel = mesh(new THREE.PlaneGeometry(1.5, 0.908), panelMat, 1.4, 0.3, 0.7); panel.rotation.y = -0.45; panel.scale.setScalar(0.85);
+sceneV.add(panel);
+
+// ---------- the boiler ----------
+const boiler = new THREE.Group();
+sceneV.add(boiler);
+const parts = [];
+function part(name, offset, build, opts = {}) {
+  const g = new THREE.Group(); build(g); boiler.add(g);
+  const p = { name, g, base: g.position.clone(), off: new THREE.Vector3(...offset), rot: opts.rot || [0, 0, 0], delay: opts.delay ?? 0, phase: opts.phase || 'explode', anchor: new THREE.Vector3(...(opts.anchor || [0, 0, 0])), label: opts.label !== false, hover: 0 };
+  if (p.phase === 'explode') p.off.z *= 0.55;   // keep the explosion mostly sideways, not into the lens
+  // label side, fixed per part: on the left for parts that end up left of the boiler's axis
+  p.left = p.base.x + p.off.x + p.anchor.clone().applyEuler(new THREE.Euler(...p.rot)).x < 0;
+  g.traverse(o => { if (o.isMesh) o.userData.part = p; });
+  parts.push(p); return p;
+}
+
+// frame: back plate, white sides and top, internal copper pipes (static)
+const frame = new THREE.Group(); boiler.add(frame);
+frame.add(mesh(new RoundedBoxGeometry(1.3, 2.1, 0.04, 2, 0.015), M.graphite, 0, 0, -0.38));
+for (const sx of [-1, 1]) frame.add(mesh(new RoundedBoxGeometry(0.04, 2.1, 0.78, 2, 0.015), M.white, sx * 0.63, 0, 0.0));
+frame.add(mesh(new RoundedBoxGeometry(1.3, 0.04, 0.78, 2, 0.015), M.white, 0, 1.03, 0));
+frame.add(tube([[-0.30, -0.36, 0.05], [-0.30, -0.15, 0.0], [-0.2, 0.02, -0.05], [-0.12, 0.12, -0.08]], 0.024, M.copper));
+frame.add(tube([[0.02, 0.78, -0.12], [0.02, 0.93, -0.12], [-0.3, 0.95, -0.16], [-0.5, 0.7, -0.2], [-0.52, 0.1, -0.16], [-0.42, -0.02, -0.06]], 0.024, M.copper));
+frame.add(tube([[0.28, -1.32, 0.05], [0.28, -0.9, 0.05], [0.28, -0.5, 0.06]], 0.022, M.brass));
+frame.add(tube([[0.30, -0.34, 0.06], [0.32, -0.2, 0.08], [0.32, -0.08, 0.08]], 0.02, M.steelD));
+frame.add(tube([[-0.36, -0.26, 0.0], [-0.42, -0.55, 0.0], [-0.45, -0.9, -0.02], [-0.45, -1.32, -0.02]], 0.024, M.copper));
+frame.add(tube([[-0.30, -0.56, 0.05], [-0.24, -0.8, 0.0], [-0.22, -1.32, -0.02]], 0.024, M.copper));
+frame.add(tube([[0.48, 0.05, -0.18], [0.48, -0.4, -0.12], [0.46, -0.9, -0.04], [0.45, -1.32, -0.02]], 0.024, M.copper));
+frame.add(tube([[0.0, 0.1, -0.06], [0.05, -0.2, 0.02], [0.05, -0.42, 0.1]], 0.014, M.siphon));
+for (const x of [-0.45, -0.22, 0.0, 0.28, 0.45]) {
+  frame.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.07, 6), M.brass, x, -1.3, x === 0.28 ? 0.05 : -0.02));
+  if (x === 0.0) frame.add(tube([[0.0, -1.32, -0.02], [0.0, -0.9, -0.02], [0.02, -0.6, 0.0]], 0.024, M.copper));
+}
+
+part('Mantello', [-2.3, 0.25, 1.5], g => {
+  g.position.set(0, 0.17, 0.4);
+  g.add(mesh(new RoundedBoxGeometry(1.32, 1.76, 0.06, 4, 0.025), M.cover));
+  M.coverLine = M.graphite.clone(); M.coverLine.transparent = true;   // fades with the cover
+  g.add(mesh(new THREE.BoxGeometry(0.5, 0.008, 0.01), M.coverLine, 0, -0.6, 0.032));
+}, { rot: [0, 0.9, 0.1], phase: 'cover', label: false });
+
+const displayTex = canvasTex(256, 112, (c, w, h) => {
+  c.fillStyle = '#071019'; c.fillRect(0, 0, w, h);
+  c.fillStyle = '#8fd0ff'; c.font = '500 60px "IBM Plex Mono", monospace'; c.textBaseline = 'middle'; c.fillText('45°', 28, 60);
+  c.font = '500 18px "IBM Plex Mono", monospace'; c.fillStyle = '#4f8fbf'; c.fillText('RISC', 170, 40); c.fillText('ACS', 170, 76);
+});
+const gaugeTex = canvasTex(256, 256, (c, w, h) => {
+  const cx = w / 2, cy = h / 2;
+  c.fillStyle = '#16191d'; c.beginPath(); c.arc(cx, cy, 126, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#f2efe8'; c.beginPath(); c.arc(cx, cy, 110, 0, Math.PI * 2); c.fill();
+  const a0 = Math.PI * 0.75, a1 = Math.PI * 2.25, val = v => a0 + (a1 - a0) * v / 4;
+  c.strokeStyle = '#1b1d20'; c.fillStyle = '#1b1d20'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = '600 26px Archivo, Arial';
+  for (let v = 0; v <= 4; v += 0.5) {
+    const a = val(v), r0 = Number.isInteger(v) ? 80 : 90;
+    c.lineWidth = Number.isInteger(v) ? 5 : 3; c.beginPath(); c.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); c.lineTo(cx + Math.cos(a) * 100, cy + Math.sin(a) * 100); c.stroke();
+    if (Number.isInteger(v)) c.fillText(String(v), cx + Math.cos(a) * 60, cy + Math.sin(a) * 60);
+  }
+  c.font = '500 18px "IBM Plex Mono", monospace'; c.fillText('bar', cx, cy + 50);
+  const a = val(1.2); c.strokeStyle = '#c0291f'; c.lineWidth = 6; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * 92, cy + Math.sin(a) * 92); c.stroke();
+  c.fillStyle = '#c0291f'; c.beginPath(); c.arc(cx, cy, 10, 0, Math.PI * 2); c.fill();
+});
+part('Pannello comandi', [0, -0.6, 1.35], g => {
+  g.position.set(0, -0.87, 0.24);
+  g.add(mesh(new RoundedBoxGeometry(1.26, 0.34, 0.36, 4, 0.04), M.graphite));
+  const disp = mesh(new THREE.PlaneGeometry(0.34, 0.15), new THREE.MeshBasicMaterial({ map: displayTex, color: new THREE.Color(1.8, 1.8, 1.8) }), -0.3, 0.02, 0.181); g.add(disp);
+  for (let i = 0; i < 4; i++) g.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.02, 24), M.steelD, -0.03 + i * 0.07, 0.02, 0.185).rotateX(Math.PI / 2));
+  const gauge = mesh(new THREE.CircleGeometry(0.1, 48), new THREE.MeshBasicMaterial({ map: gaugeTex }), 0.38, 0.02, 0.19); g.add(gauge);
+  g.add(mesh(new THREE.TorusGeometry(0.102, 0.01, 10, 48), M.steel, 0.38, 0.02, 0.19));
+}, { anchor: [-0.3, 0.12, 0.2], delay: 0.05 });
+
+part('Scheda elettronica', [0, -0.95, 0.55], g => {
+  g.position.set(0, -0.86, 0.0);
+  g.add(mesh(new THREE.BoxGeometry(0.92, 0.24, 0.02), M.pcb));
+  for (let i = 0; i < 9; i++) g.add(mesh(new THREE.BoxGeometry(0.05 + (i % 3) * 0.03, 0.04 + (i % 2) * 0.03, 0.03), i % 4 ? M.black : M.steelD, -0.38 + i * 0.095, ((i * 37) % 7) / 40 - 0.07, 0.02));
+}, { anchor: [-0.42, -0.06, 0.03], delay: 0.12 });
+
+part('Scambiatore primario a condensazione', [0, 0.55, 0.8], g => {
+  g.position.set(-0.05, 0.45, -0.1);
+  const body = mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.42, 64), M.steel); body.rotation.x = Math.PI / 2; g.add(body);
+  for (let i = 0; i < 5; i++) { const r = mesh(new THREE.TorusGeometry(0.343, 0.009, 8, 64), M.steelD, 0, 0, -0.17 + i * 0.085); g.add(r); }
+  const out = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.12, 16), M.steelD, 0, -0.38, 0.0); g.add(out);
+}, { anchor: [-0.25, 0.25, 0.2], delay: 0.1 });
+
+part('Bruciatore', [0, -0.2, 1.75], g => {
+  g.position.set(-0.05, 0.45, 0.13);
+  const door = mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.05, 48), M.graphite); door.rotation.x = Math.PI / 2; g.add(door);
+  const burner = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.3, 32), M.steelD, 0, 0, -0.17); burner.rotation.x = Math.PI / 2; g.add(burner);
+  for (let i = 0; i < 36; i++) {
+    const a = (i % 12) / 12 * Math.PI * 2, z = -0.08 - Math.floor(i / 12) * 0.09;
+    g.add(mesh(new THREE.SphereGeometry(0.016, 8, 8), M.flame, Math.cos(a) * 0.104, Math.sin(a) * 0.104, z));
+  }
+}, { anchor: [0.15, 0.2, 0.03], delay: 0.18, rot: [0.2, -1.1, 0] });
+
+part('Elettrodo di accensione e rilevazione', [-0.85, 0.1, 1.85], g => {
+  g.position.set(0.09, 0.56, 0.16);
+  g.add(mesh(new THREE.BoxGeometry(0.1, 0.05, 0.015), M.steel));
+  for (const x of [-0.02, 0.02]) { const c = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.06, 12), M.ceramic, x, 0, 0.03); c.rotation.x = Math.PI / 2; g.add(c); }
+  g.add(tube([[0.02, 0, 0.05], [0.06, 0.08, 0.1], [0.2, 0.12, 0.08]], 0.006, new THREE.MeshStandardMaterial({ color: 0xd9721f, roughness: .5 })));
+}, { anchor: [0, 0.04, 0.02], delay: 0.24 });
+
+part('Ventilatore', [1.25, 0.2, 0.95], g => {
+  g.position.set(0.33, 0.02, 0.1);
+  const v = mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.13, 48), M.black); v.rotation.x = Math.PI / 2; g.add(v);
+  g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 24).rotateX(Math.PI / 2), M.steelD, 0, 0, 0.09));
+  g.add(mesh(new RoundedBoxGeometry(0.12, 0.2, 0.1, 2, 0.02), M.black, -0.12, 0.14, 0));
+}, { anchor: [0.12, 0.1, 0.08], delay: 0.14 });
+
+part('Valvola gas', [1.0, -0.55, 1.1], g => {
+  g.position.set(0.28, -0.42, 0.06);
+  g.add(mesh(new RoundedBoxGeometry(0.18, 0.14, 0.12, 2, 0.015), M.steelD));
+  g.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.08, 24).rotateX(Math.PI / 2), M.black, 0.02, 0.0, 0.1));
+}, { anchor: [0.09, 0.05, 0.06], delay: 0.2 });
+
+part('Circolatore', [-0.95, -0.5, 1.0], g => {
+  g.position.set(-0.30, -0.45, 0.05);
+  g.add(mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.2, 32).rotateZ(Math.PI / 2), M.black));
+  g.add(mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.18, 40).rotateX(Math.PI / 2), M.pump, 0, 0, 0.13));
+  g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 32).rotateX(Math.PI / 2), M.steel, 0, 0, 0.23));
+}, { anchor: [-0.08, 0.1, 0.15], delay: 0.16 });
+
+part('Scambiatore sanitario a piastre', [-1.15, 0.2, 0.7], g => {
+  g.position.set(-0.36, -0.12, -0.02);
+  for (let i = 0; i < 10; i++) g.add(mesh(new RoundedBoxGeometry(0.2, 0.28, 0.009, 1, 0.003), i % 2 ? M.steel : M.steelD, 0, 0, -0.05 + i * 0.011));
+  g.add(mesh(new THREE.BoxGeometry(0.22, 0.3, 0.012), M.steelD, 0, 0, 0.065));
+}, { anchor: [-0.1, 0.14, 0.07], delay: 0.22 });
+
+part('Vaso di espansione', [1.2, 0.55, 0.15], g => {
+  g.position.set(0.47, 0.45, -0.2);
+  g.add(mesh(new THREE.CapsuleGeometry(0.11, 0.55, 8, 32), M.red));
+  g.add(mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.06, 12), M.brass, 0, 0.42, 0));
+}, { anchor: [0.1, 0.25, 0.05], delay: 0.08 });
+
+part('Sifone della condensa', [0.8, -0.85, 1.2], g => {
+  g.position.set(0.05, -0.55, 0.1);
+  g.add(mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.22, 32), M.siphon));
+  g.add(mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.04, 32), M.ceramic, 0, 0.12, 0));
+}, { anchor: [0.05, -0.08, 0.05], delay: 0.26 });
+
+part('Attacco aria-fumi', [0, 0.5, 0], g => {
+  g.position.set(0, 1.18, -0.05);
+  g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.26, 48), M.white));
+  g.add(mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.28, 32), M.steelD));
+  for (const x of [-0.06, 0.06]) g.add(mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.05, 12).rotateX(Math.PI / 2), M.black, x, 0.03, 0.17));
+}, { anchor: [0.16, 0.05, 0.0], delay: 0.03 });
+
+// ---------- labels ----------
+const labelsEl = document.getElementById('labels');
+for (const p of parts) {
+  if (!p.label) continue;
+  const el = document.createElement('div'); el.className = 'lbl';
+  el.innerHTML = '<i></i><b></b><span></span>'; el.querySelector('span').textContent = p.name;
+  labelsEl.appendChild(el); p.el = el;
+}
+
+// ---------- post-processing ----------
+const composer = new EffectComposer(renderer);
+const renderPass = new RenderPass(sceneH, camH);
+composer.addPass(renderPass);
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.55, 1.35);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// ---------- input ----------
+const mouse = { x: 0, y: 0, sx: 0, sy: 0, px: -999, py: -999 };
+const cursorEl = document.getElementById('cursor');
+let cx = innerWidth / 2, cy = innerHeight / 2;
+addEventListener('pointermove', e => {
+  mouse.x = e.clientX / innerWidth * 2 - 1; mouse.y = e.clientY / innerHeight * 2 - 1;
+  mouse.px = e.clientX; mouse.py = e.clientY;
+}, { passive: true });
+
+const film = document.getElementById('film');
+const copies = [...document.querySelectorAll('.copy')].map(el => { const [a, b] = el.dataset.range.split(',').map(Number); return { el, a, b }; });
+const bar = document.getElementById('bar'), vrvignette = document.getElementById('vrvignette');
+const parEls = [...document.querySelectorAll('[data-par]')];
+const flash = document.getElementById('flash'), lensmask = document.getElementById('lensmask'), hud = document.getElementById('hud'), hudtime = document.getElementById('hudtime');
+const SWITCH = 0.42;
+
+// test hook for local screenshots: ?p=0.5 freezes the film at that point
+const testP = parseFloat(new URLSearchParams(location.search).get('p'));
+if (!isNaN(testP)) Object.assign(document.querySelector('.stage').style, { position: 'fixed', inset: '0' });
+function progress() {
+  if (!isNaN(testP)) return testP;
+  const r = film.getBoundingClientRect();
+  return clamp(-r.top / (r.height - innerHeight));
+}
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false); composer.setSize(w, h);
+  camH.aspect = camV.aspect = w / h; camH.updateProjectionMatrix(); camV.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+document.fonts && document.fonts.ready.then(() => { panelTex.redraw(); displayTex.redraw(); gaugeTex.redraw(); });
+
+// ---------- per-frame state ----------
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), tmp = new THREE.Vector3();
+let ps = progress(), hovered = null;
+const clock = new THREE.Clock();
+
+function updateHeadset(p, t) {
+  const narrow = camH.aspect < 0.9;
+  const a = ease(range(p, 0.06, 0.22));          // turn to show the lenses, slide aside
+  const d = range(p, 0.31, SWITCH);              // back to the centre, then dive into the right lens
+  const de = ease(clamp(d * 1.6));
+  const dd = d * d * d;
+  const follow = (1 - a * 0.6) * (1 - d);
+  headset.position.set(lerp(lerp(0, narrow ? 0 : -0.95, a), 0, de),
+    (reduced ? 0 : Math.sin(t * 0.9) * 0.06) * (1 - d) + (narrow ? lerp(0.3, 0.5, a) : 0) * (1 - de), 0);
+  headset.rotation.set(
+    lerp(lerp(0.16, 0.08, a), 0, de) + mouse.sy * 0.2 * follow,
+    lerp(lerp(-0.78, Math.PI - 0.55, a), Math.PI, de) + mouse.sx * 0.4 * follow,
+    (reduced ? 0 : Math.sin(t * 0.6) * 0.03) * (1 - d));
+  headset.scale.setScalar(narrow ? lerp(0.6, 1, de) : 1);
+  H.knit.opacity = 1 - range(d, 0.05, 0.4);       // straps fade as the headset goes on
+  H.knit.depthWrite = H.knit.opacity > 0.99;
+  const lx = 0.33, ly = 0.03;                    // right lens, once the headset faces backwards
+  camH.position.set(lerp(0, lx, dd) + mouse.sx * 0.1 * (1 - d), lerp(0, ly, dd) - mouse.sy * 0.06 * (1 - d), lerp(lerp(4.7, 5.0, a), 0.6, dd));
+  camH.lookAt(lerp(0, lx, dd), lerp(0, ly, dd), 0);
+  const m = range(p, 0.07, 0.17);
+  if (Math.abs(m - bgMix) > 0.003) { bgMix = m; bgTex.paint(m); }
+}
+
+function updateVR(p, t) {
+  const v = range(p, SWITCH, 0.62);              // settle after entering
+  const c = ease(range(p, 0.62, 0.70));          // cover comes off
+  const e = range(p, 0.70, 0.92);                // the rest explodes
+  // frame the exploded boiler in the right ~60% of a wide screen, full width on a phone
+  const tanH = Math.tan(THREE.MathUtils.degToRad(camV.fov / 2));
+  const narrow = camV.aspect < 0.9;
+  const share = narrow ? 1 : 0.56;
+  const far = Math.max(2.3 / tanH, 2.05 / (tanH * camV.aspect * share)) * (narrow ? 1.0 : 1.06);
+  const z = lerp(lerp(9.5, 6.2, easeOut(v)), far, ease(e));
+  camV.position.set(-0.3 + mouse.sx * 0.35, 0.25 - mouse.sy * 0.2 + lerp(0.4, 0, v), z);
+  camV.lookAt(0, lerp(0.1, -0.05, e), 0.2);
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (narrow) camV.setViewOffset(w, h, 0, h * 0.2 * ease(v), w, h); else camV.setViewOffset(w, h, -w * 0.17, 0, w, h);
+  boiler.rotation.y = lerp(-0.35, -0.12, ease(e)) + mouse.sx * 0.28;
+  M.cover.opacity = M.coverLine.opacity = 1 - range(c, 0.55, 1);
+  M.cover.depthWrite = M.coverLine.depthWrite = M.cover.opacity > 0.99;   // a fading cover must not hide what is behind it
+  boiler.rotation.x = mouse.sy * 0.08;
+  panelMat.opacity = clamp(v * 2) * (1 - range(p, 0.69, 0.74));
+  panel.visible = panelMat.opacity > 0.01;
+
+  for (const [i, part] of parts.entries()) {
+    const k = part.phase === 'cover' ? c : ease(clamp((e - part.delay) / 0.7));
+    const bob = reduced ? 0 : Math.sin(t * 0.8 + i * 1.7) * 0.025 * k;
+    part.g.position.copy(part.base).addScaledVector(part.off, k); part.g.position.y += bob;
+    part.g.rotation.set(part.rot[0] * k, part.rot[1] * k + (reduced ? 0 : Math.sin(t * 0.5 + i) * 0.06 * k), part.rot[2] * k);
+    part.hover = lerp(part.hover, hovered === part ? 1 : 0, 0.15);
+    part.g.scale.setScalar(1 + part.hover * 0.06);
+    part.k = k;
+  }
+  dust.rotation.y = t * 0.01;
+  dust.position.y = reduced ? 0 : Math.sin(t * 0.2) * 0.1;
+  return e;
+}
+
+function placeLabels(show) {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  for (const p of parts) {
+    if (!p.el) continue;
+    const vis = show * clamp((p.k - 0.75) / 0.25);
+    if (vis <= 0.01) { p.el.style.opacity = 0; p.flip = undefined; continue; }
+    tmp.copy(p.anchor); p.g.localToWorld(tmp); tmp.project(camV);
+    const x = (tmp.x * .5 + .5) * w, y = (-tmp.y * .5 + .5) * h;
+    const bw = p.el.offsetWidth;
+    // leave the usual side only when the label runs off screen, and come back only with room to spare,
+    // so the mouse parallax can't make it jump from side to side
+    const room = left => left ? x - bw - 16 : w - 16 - x - bw;
+    let flip = p.flip ?? p.left;
+    if (flip === p.left ? room(flip) < 0 : room(p.left) > 32) flip = !flip;
+    p.flip = flip;
+    const fits = room(flip) >= -8;
+    p.el.classList.toggle('flip', flip);
+    p.el.classList.toggle('on', hovered === p);
+    // a flipped label hangs from its right edge, so it stays put when the hover line grows
+    p.el.style.transform = `translate(${(x + (flip ? 4 : -4)).toFixed(1)}px, ${(y - 9).toFixed(1)}px)${flip ? ' translateX(-100%)' : ''}`;
+    p.el.style.opacity = (!fits || y < 90 || y > h - 60) ? 0 : vis;
+  }
+}
+
+function pick() {
+  const r = canvas.getBoundingClientRect();
+  if (mouse.py < r.top || mouse.py > r.bottom) return null;
+  ndc.set((mouse.px - r.left) / r.width * 2 - 1, -((mouse.py - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camV);
+  const hit = ray.intersectObjects(boiler.children, true).find(h => h.object.userData.part && h.object.userData.part.phase !== 'cover' && h.object.userData.part.k > 0.6);   // the removed cover is invisible, not in the way
+  return hit ? hit.object.userData.part : null;
+}
+
+function tick() {
+  const t = clock.getElapsedTime();
+  const p = progress();
+  ps = reduced ? p : lerp(ps, p, 0.085);
+  mouse.sx = lerp(mouse.sx, mouse.x, 0.05); mouse.sy = lerp(mouse.sy, mouse.y, 0.05);
+  cx = lerp(cx, mouse.px, 0.2); cy = lerp(cy, mouse.py, 0.2);
+  cursorEl.style.transform = `translate(${cx}px, ${cy}px)`;
+
+  for (const c of copies) {
+    const o = clamp(Math.min((ps - c.a) / 0.03, (c.b - ps) / 0.03));
+    c.el.style.opacity = o; c.el.style.visibility = o < 0.01 ? 'hidden' : 'visible';
+    c.el.style.translate = `0 ${((1 - o) * 24).toFixed(1)}px`;
+  }
+  flash.style.opacity = clamp(1 - Math.abs(ps - SWITCH) / 0.03) * 0.95;
+  lensmask.style.opacity = clamp(range(ps, SWITCH, SWITCH + 0.01) * (1 - range(ps, SWITCH + 0.01, 0.52)) * 1.2);
+  const inVR = ps >= SWITCH;
+  vrvignette.style.opacity = inVR ? range(ps, SWITCH, SWITCH + 0.05) : 0;
+  bar.classList.toggle('on-light', (ps > 0.12 && ps < SWITCH - 0.005) || film.getBoundingClientRect().bottom < 70);
+  for (const el of parEls) el.style.translate = `${(mouse.sx * el.dataset.par).toFixed(1)}px ${(mouse.sy * el.dataset.par * 0.5).toFixed(1)}px`;
+  hud.style.opacity = range(ps, SWITCH + 0.02, 0.5);
+  const secs = Math.floor(t + 272); hudtime.textContent = String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
+
+  if (!inVR) {
+    updateHeadset(ps, t);
+    if (ps > 0.06) {               // only feed the lenses once they turn towards the camera
+      updateVR(SWITCH + 0.02, t);
+      camLens.position.copy(camV.position); camLens.quaternion.copy(camV.quaternion);
+      renderer.setRenderTarget(lensRT); renderer.render(sceneV, camLens); renderer.setRenderTarget(null);
+    }
+    renderPass.scene = sceneH; renderPass.camera = camH;
+    hovered = null; placeLabels(0);
+  } else {
+    const e = updateVR(ps, t);
+    hovered = e > 0.6 ? pick() : null;
+    document.body.style.cursor = hovered ? 'pointer' : '';
+    placeLabels(range(ps, 0.70, 0.95) > 0 ? 1 : 0);
+    renderPass.scene = sceneV; renderPass.camera = camV;
+  }
+  cursorEl.classList.toggle('big', !!hovered);
+  composer.render();
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+</script>
