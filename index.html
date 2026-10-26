@@ -348,7 +348,6 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
 <script type="module">
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -380,36 +379,11 @@ const easeOut = t => 1 - Math.pow(1 - t, 3);
 
 const M = {
   strip:   new THREE.MeshBasicMaterial({ color: new THREE.Color(0x4fcfa8).multiplyScalar(3.2) }),
-  white:   new THREE.MeshPhysicalMaterial({ color: 0xcfccc6, roughness: .42, clearcoat: .35, clearcoatRoughness: .3 }),
   cover:   new THREE.MeshPhysicalMaterial({ color: 0xcfccc6, roughness: .42, clearcoat: .35, clearcoatRoughness: .3, transparent: true }),
-  graphite:new THREE.MeshStandardMaterial({ color: 0x2a2e34, roughness: .55, metalness: .35 }),
-  steel:   new THREE.MeshStandardMaterial({ color: 0xa9afb7, metalness: 1, roughness: .34 }),
-  steelD:  new THREE.MeshStandardMaterial({ color: 0x8d939b, metalness: 1, roughness: .42 }),
-  copper:  new THREE.MeshStandardMaterial({ color: 0xc7764a, metalness: 1, roughness: .28 }),
-  brass:   new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 1, roughness: .34 }),
-  red:     new THREE.MeshPhysicalMaterial({ color: 0xa8231c, roughness: .4, clearcoat: .7 }),
-  black:   new THREE.MeshStandardMaterial({ color: 0x141619, roughness: .6, metalness: .1 }),
-  pump:    new THREE.MeshPhysicalMaterial({ color: 0x2c4660, roughness: .38, clearcoat: .5 }),
-  siphon:  new THREE.MeshPhysicalMaterial({ color: 0xf2f2ee, roughness: .22, transparent: true, opacity: .82, clearcoat: .8 }),
-  pcb:     new THREE.MeshStandardMaterial({ color: 0x1d5638, roughness: .55 }),
-  ceramic: new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: .5 }),
-  flame:   new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 1.4, 4.5) }),
 };
 
 for (const m of Object.values(M)) if ('envMapIntensity' in m) m.envMapIntensity = 0.75;
 function mesh(geo, mat, x = 0, y = 0, z = 0) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; }
-function tube(points, r, mat) {
-  const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)), false, 'catmullrom', .2);
-  return new THREE.Mesh(new THREE.TubeGeometry(curve, 64, r, 12, false), mat);
-}
-function roundedRect(target, w, h, r) {
-  const x = -w / 2, y = -h / 2;
-  target.moveTo(x + r, y); target.lineTo(x + w - r, y); target.quadraticCurveTo(x + w, y, x + w, y + r);
-  target.lineTo(x + w, y + h - r); target.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  target.lineTo(x + r, y + h); target.quadraticCurveTo(x, y + h, x, y + h - r);
-  target.lineTo(x, y + r); target.quadraticCurveTo(x, y, x + r, y);
-  return target;
-}
 function canvasTex(w, h, draw) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
@@ -558,7 +532,7 @@ const panelTex = canvasTex(1024, 620, (c, w, h) => {
   c.clearRect(0, 0, w, h);
   c.fillStyle = 'rgba(13,17,23,0.92)'; c.beginPath(); c.roundRect(4, 4, w - 8, h - 8, 26); c.fill();
   c.strokeStyle = 'rgba(116,184,255,0.55)'; c.lineWidth = 3; c.stroke();
-  c.fillStyle = '#4fcfa8'; c.font = '500 30px "IBM Plex Mono", monospace'; c.fillText('PASSO 3 DI 22', 56, 86);
+  c.fillStyle = '#4fcfa8'; c.font = '500 30px "IBM Plex Mono", monospace'; c.fillText('PASSO 4 DI 25', 56, 86);
   c.fillStyle = '#8d959e'; c.fillText('MANUTENZIONE ORDINARIA', 56, 132);
   c.fillStyle = '#ebe8e2'; c.font = '700 56px Archivo, Arial, sans-serif';
   const lines = ['Togli il mantello frontale', 'per arrivare ai componenti', 'interni.'];
@@ -572,43 +546,50 @@ const panel = mesh(new THREE.PlaneGeometry(1.5, 0.908), panelMat, 1.4, 0.3, 0.7)
 sceneV.add(panel);
 
 // ---------- the boiler ----------
+// the boiler comes from caldaia.glb, the same model as the app (built in Blender: assets-source/modelli/caldaia_generica.py)
 const boiler = new THREE.Group();
 sceneV.add(boiler);
+const frame = new THREE.Group(); boiler.add(frame);   // what stays put: frame, pipes, sensors and the other small parts
 const parts = [];
-function part(name, offset, build, opts = {}) {
-  const g = new THREE.Group(); build(g); boiler.add(g);
-  const p = { name, g, base: g.position.clone(), off: new THREE.Vector3(...offset), rot: opts.rot || [0, 0, 0], delay: opts.delay ?? 0, phase: opts.phase || 'explode', anchor: new THREE.Vector3(...(opts.anchor || [0, 0, 0])), label: opts.label !== false, hover: 0 };
+const S = 2.85;                                       // model metres -> scene units (the casing is 2.1 tall)
+
+// exploded parts: catalog IDs (the first one gives the part its origin), label, offset when exploded;
+// phone: false = no label on phones, there is no room for all of them
+const PARTS = [
+  [['casing'], 'Mantello', [-2.3, 0.25, 1.5], { rot: [0, 0.9, 0.1], phase: 'cover', label: false }],
+  [['flue-connection', 'flue-duct', 'flue-sensor', 'flue-test-points'], 'Attacco\naria-fumi', [0, 0.5, 0.1], { delay: 0.03 }],
+  [['primary-heat-exchanger'], 'Scambiatore primario\na condensazione', [0, 0.32, 0.8], { delay: 0.1 }],
+  [['burner', 'mixer-duct'], 'Bruciatore', [0, -0.15, 1.75], { delay: 0.18, rot: [0.2, -0.9, 0] }],
+  [['ignition-electrode'], 'Elettrodo di accensione\ne rilevazione', [-0.9, 0.15, 1.8], { delay: 0.24 }],
+  [['expansion-vessel'], 'Vaso di\nespansione', [1.15, 0.65, 0.15], { delay: 0.08 }],
+  [['fan'], 'Ventilatore', [1.1, 0.05, 0.9], { delay: 0.14 }],
+  [['gas-valve'], 'Valvola gas', [1.0, -0.45, 1.0], { delay: 0.2 }],
+  [['circulator-pump', 'air-vent'], 'Circolatore', [1.05, -0.62, 0.9], { delay: 0.16 }],
+  [['condensate-trap'], 'Sifone della\ncondensa', [-0.95, 0, 1.1], { delay: 0.26 }],
+  [['dhw-plate-exchanger'], 'Scambiatore sanitario\na piastre', [-1.2, -0.25, 0.9], { delay: 0.22 }],
+  [['diverter-valve'], 'Valvola\ndeviatrice', [-1.0, -0.72, 0.9], { delay: 0.2, phone: false }],
+  [['safety-valve'], 'Valvola di\nsicurezza', [-0.75, -1.0, 0.8], { delay: 0.24 }],
+  [['control-panel'], 'Pannello\ncomandi', [0, -0.15, 1.9], { delay: 0.05 }],
+  [['control-board'], 'Scheda\nelettronica', [0, 0, 0.3], { delay: 0.12, phone: false }],
+  [['flow-tap', 'gas-tap', 'cold-water-tap', 'return-tap', 'installation-pipes'], "Rubinetti\nd'intercettazione", [0, -0.6, 0.3], { delay: 0.28 }],
+];
+// the electrode comes off with its cables unplugged, as in the procedure
+const STAY = ['ignition-electrode__cable-ignition', 'ignition-electrode__cable-ground'];
+
+function part(name, nodes, offset, opts = {}) {
+  const g = new THREE.Group(); boiler.add(g);
+  nodes[0].getWorldPosition(g.position);          // the boiler has no transform while its parts are made
+  for (const n of nodes) g.attach(n);
+  const p = { name, g, base: g.position.clone(), off: new THREE.Vector3(...offset), rot: opts.rot || [0, 0, 0], delay: opts.delay ?? 0, phase: opts.phase || 'explode', label: opts.label !== false, phone: opts.phone !== false, hover: 0 };
+  // label dot: on the front face, towards the side where the part goes (big parts would hide their label)
+  const b = new THREE.Box3().setFromObject(g), side = Math.sign(p.base.x + p.off.x) || 1;
+  p.anchor = new THREE.Vector3((b.min.x + b.max.x) / 2 + side * (b.max.x - b.min.x) * 0.3, (b.min.y + b.max.y) / 2, b.max.z).sub(g.position);
   if (p.phase === 'explode') p.off.z *= 0.55;   // keep the explosion mostly sideways, not into the lens
   // label side, fixed per part: on the left for parts that end up left of the boiler's axis
   p.left = p.base.x + p.off.x + p.anchor.clone().applyEuler(new THREE.Euler(...p.rot)).x < 0;
   g.traverse(o => { if (o.isMesh) o.userData.part = p; });
   parts.push(p); return p;
 }
-
-// frame: white back, sides and top, internal copper pipes (static)
-const frame = new THREE.Group(); boiler.add(frame);
-frame.add(mesh(new RoundedBoxGeometry(1.3, 2.1, 0.04, 2, 0.015), M.white, 0, 0, -0.38));
-for (const sx of [-1, 1]) frame.add(mesh(new RoundedBoxGeometry(0.04, 2.1, 0.78, 2, 0.015), M.white, sx * 0.63, 0, 0.0));
-frame.add(mesh(new RoundedBoxGeometry(1.3, 0.04, 0.78, 2, 0.015), M.white, 0, 1.03, 0));
-frame.add(tube([[-0.30, -0.36, 0.05], [-0.30, -0.15, 0.0], [-0.2, 0.02, -0.05], [-0.12, 0.12, -0.08]], 0.024, M.copper));
-frame.add(tube([[0.02, 0.78, -0.12], [0.02, 0.93, -0.12], [-0.3, 0.95, -0.16], [-0.5, 0.7, -0.2], [-0.52, 0.1, -0.16], [-0.42, -0.02, -0.06]], 0.024, M.copper));
-frame.add(tube([[0.28, -1.32, 0.05], [0.28, -0.9, 0.05], [0.28, -0.5, 0.06]], 0.022, M.brass));
-frame.add(tube([[0.30, -0.34, 0.06], [0.32, -0.2, 0.08], [0.32, -0.08, 0.08]], 0.02, M.steelD));
-frame.add(tube([[-0.36, -0.26, 0.0], [-0.42, -0.55, 0.0], [-0.45, -0.9, -0.02], [-0.45, -1.32, -0.02]], 0.024, M.copper));
-frame.add(tube([[-0.30, -0.56, 0.05], [-0.24, -0.8, 0.0], [-0.22, -1.32, -0.02]], 0.024, M.copper));
-frame.add(tube([[0.48, 0.05, -0.18], [0.48, -0.4, -0.12], [0.46, -0.9, -0.04], [0.45, -1.32, -0.02]], 0.024, M.copper));
-frame.add(tube([[0.0, 0.1, -0.06], [0.05, -0.2, 0.02], [0.05, -0.42, 0.1]], 0.014, M.siphon));
-for (const x of [-0.45, -0.22, 0.0, 0.28, 0.45]) {
-  frame.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.07, 6), M.brass, x, -1.3, x === 0.28 ? 0.05 : -0.02));
-  if (x === 0.0) frame.add(tube([[0.0, -1.32, -0.02], [0.0, -0.9, -0.02], [0.02, -0.6, 0.0]], 0.024, M.copper));
-}
-
-part('Mantello', [-2.3, 0.25, 1.5], g => {
-  g.position.set(0, 0.17, 0.4);
-  g.add(mesh(new RoundedBoxGeometry(1.32, 1.76, 0.06, 4, 0.025), M.cover));
-  M.coverLine = M.graphite.clone(); M.coverLine.transparent = true;   // fades with the cover
-  g.add(mesh(new THREE.BoxGeometry(0.5, 0.008, 0.01), M.coverLine, 0, -0.6, 0.032));
-}, { rot: [0, 0.9, 0.1], phase: 'cover', label: false });
 
 const displayTex = canvasTex(256, 112, (c, w, h) => {
   c.fillStyle = '#071019'; c.fillRect(0, 0, w, h);
@@ -630,97 +611,48 @@ const gaugeTex = canvasTex(256, 256, (c, w, h) => {
   const a = val(1.2); c.strokeStyle = '#c0291f'; c.lineWidth = 6; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * 92, cy + Math.sin(a) * 92); c.stroke();
   c.fillStyle = '#c0291f'; c.beginPath(); c.arc(cx, cy, 10, 0, Math.PI * 2); c.fill();
 });
-part('Pannello\ncomandi', [0, -0.6, 1.35], g => {
-  g.position.set(0, -0.87, 0.24);
-  g.add(mesh(new RoundedBoxGeometry(1.26, 0.34, 0.36, 4, 0.04), M.graphite));
-  const disp = mesh(new THREE.PlaneGeometry(0.34, 0.15), new THREE.MeshBasicMaterial({ map: displayTex, color: new THREE.Color(1.8, 1.8, 1.8) }), -0.3, 0.02, 0.181); g.add(disp);
-  for (let i = 0; i < 4; i++) g.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.02, 24), M.steelD, -0.03 + i * 0.07, 0.02, 0.185).rotateX(Math.PI / 2));
-  const gauge = mesh(new THREE.CircleGeometry(0.1, 48), new THREE.MeshBasicMaterial({ map: gaugeTex }), 0.38, 0.02, 0.19); g.add(gauge);
-  g.add(mesh(new THREE.TorusGeometry(0.102, 0.01, 10, 48), M.steel, 0.38, 0.02, 0.19));
-}, { anchor: [-0.3, 0.12, 0.2], delay: 0.05 });
+// display and gauge are drawn by the page, as by the app, on the front of the model's ones
+function face(obj, matName, geo, map, color) {
+  let target;
+  obj.traverse(o => { if (o.isMesh && o.material.name === matName) target = o; });
+  target.geometry.computeBoundingBox();
+  const b = target.geometry.boundingBox, s = b.getSize(new THREE.Vector3());
+  const m = mesh(geo(s), new THREE.MeshBasicMaterial({ map, color: color || 0xffffff }), (b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, b.max.z + 0.0003);
+  target.add(m);
+}
 
-part('Scheda\nelettronica', [0, -0.95, 0.55], g => {
-  g.position.set(0, -0.86, 0.0);
-  g.add(mesh(new THREE.BoxGeometry(0.92, 0.24, 0.02), M.pcb));
-  for (let i = 0; i < 9; i++) g.add(mesh(new THREE.BoxGeometry(0.05 + (i % 3) * 0.03, 0.04 + (i % 2) * 0.03, 0.03), i % 4 ? M.black : M.steelD, -0.38 + i * 0.095, ((i * 37) % 7) / 40 - 0.07, 0.02));
-}, { anchor: [-0.42, -0.06, 0.03], delay: 0.12 });
-
-part('Scambiatore primario\na condensazione', [0, 0.55, 0.8], g => {
-  g.position.set(-0.05, 0.45, -0.1);
-  const body = mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.42, 64), M.steel); body.rotation.x = Math.PI / 2; g.add(body);
-  for (let i = 0; i < 5; i++) { const r = mesh(new THREE.TorusGeometry(0.343, 0.009, 8, 64), M.steelD, 0, 0, -0.17 + i * 0.085); g.add(r); }
-  const out = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.12, 16), M.steelD, 0, -0.38, 0.0); g.add(out);
-}, { anchor: [-0.25, 0.25, 0.2], delay: 0.1 });
-
-part('Bruciatore', [0, -0.2, 1.75], g => {
-  g.position.set(-0.05, 0.45, 0.13);
-  const door = mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.05, 48), M.graphite); door.rotation.x = Math.PI / 2; g.add(door);
-  const burner = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.3, 32), M.steelD, 0, 0, -0.17); burner.rotation.x = Math.PI / 2; g.add(burner);
-  for (let i = 0; i < 36; i++) {
-    const a = (i % 12) / 12 * Math.PI * 2, z = -0.08 - Math.floor(i / 12) * 0.09;
-    g.add(mesh(new THREE.SphereGeometry(0.016, 8, 8), M.flame, Math.cos(a) * 0.104, Math.sin(a) * 0.104, z));
-  }
-}, { anchor: [0.15, 0.2, 0.03], delay: 0.18, rot: [0.2, -1.1, 0] });
-
-part('Elettrodo di accensione\ne rilevazione', [-0.85, 0.1, 1.85], g => {
-  g.position.set(0.09, 0.56, 0.16);
-  g.add(mesh(new THREE.BoxGeometry(0.1, 0.05, 0.015), M.steel));
-  for (const x of [-0.02, 0.02]) { const c = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.06, 12), M.ceramic, x, 0, 0.03); c.rotation.x = Math.PI / 2; g.add(c); }
-  g.add(tube([[0.02, 0, 0.05], [0.06, 0.08, 0.1], [0.2, 0.12, 0.08]], 0.006, new THREE.MeshStandardMaterial({ color: 0xd9721f, roughness: .5 })));
-}, { anchor: [0, 0.04, 0.02], delay: 0.24 });
-
-part('Ventilatore', [1.25, 0.2, 0.95], g => {
-  g.position.set(0.33, 0.02, 0.1);
-  const v = mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.13, 48), M.black); v.rotation.x = Math.PI / 2; g.add(v);
-  g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 24).rotateX(Math.PI / 2), M.steelD, 0, 0, 0.09));
-  g.add(mesh(new RoundedBoxGeometry(0.12, 0.2, 0.1, 2, 0.02), M.black, -0.12, 0.14, 0));
-}, { anchor: [0.12, 0.1, 0.08], delay: 0.14 });
-
-part('Valvola gas', [1.0, -0.55, 1.1], g => {
-  g.position.set(0.28, -0.42, 0.06);
-  g.add(mesh(new RoundedBoxGeometry(0.18, 0.14, 0.12, 2, 0.015), M.steelD));
-  g.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.08, 24).rotateX(Math.PI / 2), M.black, 0.02, 0.0, 0.1));
-}, { anchor: [0.09, 0.05, 0.06], delay: 0.2 });
-
-part('Circolatore', [-0.95, -0.5, 1.0], g => {
-  g.position.set(-0.30, -0.45, 0.05);
-  g.add(mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.2, 32).rotateZ(Math.PI / 2), M.black));
-  g.add(mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.18, 40).rotateX(Math.PI / 2), M.pump, 0, 0, 0.13));
-  g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 32).rotateX(Math.PI / 2), M.steel, 0, 0, 0.23));
-}, { anchor: [-0.08, 0.1, 0.15], delay: 0.16 });
-
-part('Scambiatore sanitario\na piastre', [-1.15, 0.2, 0.7], g => {
-  g.position.set(-0.36, -0.12, -0.02);
-  for (let i = 0; i < 10; i++) g.add(mesh(new RoundedBoxGeometry(0.2, 0.28, 0.009, 1, 0.003), i % 2 ? M.steel : M.steelD, 0, 0, -0.05 + i * 0.011));
-  g.add(mesh(new THREE.BoxGeometry(0.22, 0.3, 0.012), M.steelD, 0, 0, 0.065));
-}, { anchor: [-0.1, 0.14, 0.07], delay: 0.22 });
-
-part('Vaso di\nespansione', [1.2, 0.55, 0.15], g => {
-  g.position.set(0.47, 0.45, -0.2);
-  g.add(mesh(new THREE.CapsuleGeometry(0.11, 0.55, 8, 32), M.red));
-  g.add(mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.06, 12), M.brass, 0, 0.42, 0));
-}, { anchor: [0.1, 0.25, 0.05], delay: 0.08 });
-
-part('Sifone della\ncondensa', [0.8, -0.85, 1.2], g => {
-  g.position.set(0.05, -0.55, 0.1);
-  g.add(mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.22, 32), M.siphon));
-  g.add(mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.04, 32), M.ceramic, 0, 0.12, 0));
-}, { anchor: [0.05, -0.08, 0.05], delay: 0.26 });
-
-part('Attacco\naria-fumi', [0, 0.5, 0], g => {
-  g.position.set(0, 1.18, -0.05);
-  g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.26, 48), M.white));
-  g.add(mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.28, 32), M.steelD));
-  for (const x of [-0.06, 0.06]) g.add(mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.05, 12).rotateX(Math.PI / 2), M.black, x, 0.03, 0.17));
-}, { anchor: [0.16, 0.05, 0.0], delay: 0.03 });
+new GLTFLoader().load('caldaia.glb', gltf => {
+  const model = gltf.scene, turn = boiler.rotation.clone();
+  model.scale.setScalar(S);
+  model.position.set(0, -0.37 * S, -0.15 * S);    // the casing's centre on the origin
+  model.traverse(o => {
+    if (!o.isMesh) return;
+    const m = o.material;
+    if (m.name === 'casing') { o.material = M.cover; return; }   // fades when the cover comes off
+    m.envMapIntensity = 0.75;
+    if (m.metalness > 0.5) { m.envMapIntensity = 0.5; m.roughness = Math.max(m.roughness, 0.45); }   // no glare on frame and pipes
+  });
+  face(model, 'display', s => new THREE.PlaneGeometry(s.x, s.y), displayTex, new THREE.Color(1.8, 1.8, 1.8));
+  face(model, 'gauge-face', s => new THREE.CircleGeometry(s.x / 2 * 1.13, 48), gaugeTex);
+  frame.add(model);
+  boiler.rotation.set(0, 0, 0); boiler.updateMatrixWorld(true);
+  const node = id => model.getObjectByName(id);
+  for (const id of [...STAY, ...PARTS.flatMap(([ids]) => ids)]) model.attach(node(id));   // parts never carry one another
+  for (const [ids, name, offset, opts] of PARTS) part(name, ids.map(node), offset, opts);
+  boiler.rotation.copy(turn);
+  makeLabels();
+  labelsLaidOut = false;
+});
 
 // ---------- labels ----------
 const labelsEl = document.getElementById('labels');
-for (const p of parts) {
-  if (!p.label) continue;
-  const el = document.createElement('div'); el.className = 'lbl';
-  el.innerHTML = '<i></i><b></b><span></span>'; el.querySelector('span').textContent = p.name;
-  labelsEl.appendChild(el); p.el = el;
+function makeLabels() {
+  for (const p of parts) {
+    if (!p.label) continue;
+    const el = document.createElement('div'); el.className = 'lbl';
+    el.innerHTML = '<i></i><b></b><span></span>'; el.querySelector('span').textContent = p.name;
+    labelsEl.appendChild(el); p.el = el;
+  }
 }
 
 // ---------- post-processing ----------
@@ -804,15 +736,15 @@ function updateVR(p, t) {
   const tanH = Math.tan(THREE.MathUtils.degToRad(camV.fov / 2));
   const narrow = camV.aspect < 0.9;
   const share = narrow ? 1 : 0.56;
-  const far = Math.max(2.3 / tanH, 2.05 / (tanH * camV.aspect * share)) * (narrow ? 1.08 : 1.06);   // a phone keeps side margins for the labels
+  const far = Math.max(2.3 / tanH, 2.05 / (tanH * camV.aspect * share)) * (narrow ? 1.08 : 1.1);   // a phone keeps side margins for the labels
   const z = lerp(lerp(9.5, 6.2, easeOut(v)), far, ease(e));
   camV.position.set(-0.3 + mouse.sx * 0.35, 0.25 - mouse.sy * 0.2 + lerp(0.4, 0, v), z);
   camV.lookAt(0, lerp(0.1, -0.05, e), 0.2);
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (narrow) camV.setViewOffset(w, h, 0, h * 0.2 * ease(v), w, h); else camV.setViewOffset(w, h, -w * 0.17, 0, w, h);
   boiler.rotation.y = lerp(-0.35, -0.12, ease(e)) + mouse.sx * 0.28;
-  M.cover.opacity = M.coverLine.opacity = 1 - range(c, 0.55, 1);
-  M.cover.depthWrite = M.coverLine.depthWrite = M.cover.opacity > 0.99;   // a fading cover must not hide what is behind it
+  M.cover.opacity = 1 - range(c, 0.55, 1);
+  M.cover.depthWrite = M.cover.opacity > 0.99;   // a fading cover must not hide what is behind it
   boiler.rotation.x = mouse.sy * 0.08;
   panelMat.opacity = clamp(v * 2) * (1 - range(p, 0.69, 0.74));
   panel.visible = panelMat.opacity > 0.01;
@@ -896,9 +828,11 @@ function layoutLabels(t) {
   labelCopy.el.style.translate = shift;
   const solids = [[screenRect(frame, w, h), 0.5]];   // the casing's box on screen is loose, its parts' are tight
   for (const p of parts) if (p.phase !== 'cover') solids.push([screenRect(p.g, w, h), 2]);
-  const dots = parts.filter(p => p.el).map(p => { tmp.copy(p.anchor); p.g.localToWorld(tmp); tmp.project(camV); return [(tmp.x * .5 + .5) * w, (-tmp.y * .5 + .5) * h]; });
+  const shown = parts.filter(p => p.el && (p.phone || !compact));
+  for (const p of parts) p.side = undefined;      // a label left out has no spot and stays hidden
+  const dots = shown.map(p => { tmp.copy(p.anchor); p.g.localToWorld(tmp); tmp.project(camV); return [(tmp.x * .5 + .5) * w, (-tmp.y * .5 + .5) * h]; });
 
-  for (const [n, p] of parts.filter(p => p.el).entries()) {
+  for (const [n, p] of shown.entries()) {
     const [x, y] = dots[n], spots = labelSpots(p, x, y, w);
     const cost = ([bx, by, sw, sh, c]) => {
       if (bx < 8 || bx + sw > w - 8 || by < 8 || by + sh > h - 8) return Infinity;
