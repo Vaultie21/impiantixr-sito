@@ -554,7 +554,9 @@ const parts = [];
 const S = 2.85;                                       // model metres -> scene units (the casing is 2.1 tall)
 
 // exploded parts: catalog IDs (the first one gives the part its origin), label, offset when exploded;
-// phone: false = no label on phones, there is no room for all of them
+// phone: false = no label on phones, there is no room for all of them;
+// anchorOn = the piece that holds the label dot; spot = the label's preferred side;
+// lead = longer line to the label (times the usual one)
 const PARTS = [
   [['casing'], 'Mantello', [-2.3, 0.25, 1.5], { rot: [0, 0.9, 0.1], phase: 'cover', label: false }],
   [['flue-connection', 'flue-duct', 'flue-sensor', 'flue-test-points'], 'Attacco\naria-fumi', [0, 0.5, 0.1], { delay: 0.03 }],
@@ -568,10 +570,10 @@ const PARTS = [
   [['condensate-trap'], 'Sifone della\ncondensa', [-0.95, 0, 1.1], { delay: 0.26 }],
   [['dhw-plate-exchanger'], 'Scambiatore sanitario\na piastre', [-1.2, -0.25, 0.9], { delay: 0.22 }],
   [['diverter-valve'], 'Valvola\ndeviatrice', [-1.0, -0.72, 0.9], { delay: 0.2, phone: false }],
+  [['flow-tap', 'gas-tap', 'cold-water-tap', 'return-tap', 'installation-pipes'], "Rubinetti\nd'intercettazione", [0, -0.6, 0.3], { delay: 0.28, anchorOn: 'gas-tap__handle', spot: 'down', lead: 1.6 }],
   [['safety-valve'], 'Valvola di\nsicurezza', [-0.75, -1.0, 0.8], { delay: 0.24 }],
   [['control-panel'], 'Pannello\ncomandi', [0, -0.15, 1.9], { delay: 0.05 }],
   [['control-board'], 'Scheda\nelettronica', [0, 0, 0.3], { delay: 0.12, phone: false }],
-  [['flow-tap', 'gas-tap', 'cold-water-tap', 'return-tap', 'installation-pipes'], "Rubinetti\nd'intercettazione", [0, -0.6, 0.3], { delay: 0.28 }],
 ];
 // the electrode comes off with its cables unplugged, as in the procedure
 const STAY = ['ignition-electrode__cable-ignition', 'ignition-electrode__cable-ground'];
@@ -580,9 +582,11 @@ function part(name, nodes, offset, opts = {}) {
   const g = new THREE.Group(); boiler.add(g);
   nodes[0].getWorldPosition(g.position);          // the boiler has no transform while its parts are made
   for (const n of nodes) g.attach(n);
-  const p = { name, g, base: g.position.clone(), off: new THREE.Vector3(...offset), rot: opts.rot || [0, 0, 0], delay: opts.delay ?? 0, phase: opts.phase || 'explode', label: opts.label !== false, phone: opts.phone !== false, hover: 0 };
-  // label dot: on the front face, towards the side where the part goes (big parts would hide their label)
-  const b = new THREE.Box3().setFromObject(g), side = Math.sign(p.base.x + p.off.x) || 1;
+  const p = { name, g, base: g.position.clone(), off: new THREE.Vector3(...offset), rot: opts.rot || [0, 0, 0], delay: opts.delay ?? 0, phase: opts.phase || 'explode', label: opts.label !== false, phone: opts.phone !== false, spot: opts.spot, lead: opts.lead || 1, hover: 0 };
+  // label dot: on the front face, towards the side where the part goes (big parts would hide their label);
+  // for a group of pieces, in the middle of the front of the one named by anchorOn
+  const on = opts.anchorOn && g.getObjectByName(opts.anchorOn), b = new THREE.Box3().setFromObject(on || g);
+  const side = on ? 0 : Math.sign(p.base.x + p.off.x) || 1;
   p.anchor = new THREE.Vector3((b.min.x + b.max.x) / 2 + side * (b.max.x - b.min.x) * 0.3, (b.min.y + b.max.y) / 2, b.max.z).sub(g.position);
   if (p.phase === 'explode') p.off.z *= 0.55;   // keep the explosion mostly sideways, not into the lens
   // label side, fixed per part: on the left for parts that end up left of the boiler's axis
@@ -784,6 +788,7 @@ const overlap = (a, b) => Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0]
 const hudBlocks = [...document.querySelectorAll('.hud .corner, .hud .row > span')], textRange = document.createRange();
 const compactLabels = () => canvas.clientWidth < 600;   // phones: smaller type, always two lines
 const labelLead = () => compactLabels() ? 18 : 30;      // dot centre to label box
+const leadOf = p => labelLead() * (compactLabels() ? 1 : p.lead);   // phones have no room for a longer line
 function labelSizes(p) {                          // box size on one line and on two
   if (!p.sizes) {
     const span = p.el.querySelector('span');
@@ -792,9 +797,9 @@ function labelSizes(p) {                          // box size on one line and on
   return p.sizes;
 }
 function labelSpots(p, x, y, w) {                 // name -> [x, y, width, height, cost of the spot itself]
-  const spots = {}, lead = labelLead();
+  const spots = {}, lead = leadOf(p);
   for (const [i, [sw, sh]] of labelSizes(p).entries()) {
-    if (compactLabels() && !i) continue;
+    if (compactLabels() && !i && !p.spot) continue;   // a label with its side set may keep one line, it has less room
     const cx = clamp(x - sw / 2, 8, w - 8 - sw), extra = i ? 200 : 0;   // one line reads better where it fits
     const side = (dx, base) => [p.left === (dx < 0) ? x - lead - sw : x + lead, y - sh / 2, sw, sh, base + extra];
     spots['out' + i] = side(-1, 0);
@@ -844,7 +849,10 @@ function layoutLabels(t) {
       return c;
     };
     let best = 'out' + (compact ? 1 : 0), bestCost = Infinity;
-    for (const name in spots) { const c = cost(spots[name]); if (c < bestCost) { best = name; bestCost = c; } }
+    for (const name in spots) {
+      const c = cost(spots[name]) + (p.spot && !name.startsWith(p.spot) ? 5000 : 0);   // another side only if that one covers text
+      if (c < bestCost) { best = name; bestCost = c; }
+    }
     p.side = best;
     const [bx, by, sw, sh] = spots[best];
     placed.push([[bx - 3, by - 3, bx + sw + 3, by + sh + 3], 15]);
@@ -854,9 +862,10 @@ function layoutLabels(t) {
 }
 
 function placeLabels(show) {
-  const w = canvas.clientWidth, h = canvas.clientHeight, top = labelTop(), lead = labelLead();
+  const w = canvas.clientWidth, h = canvas.clientHeight, top = labelTop();
   for (const p of parts) {
     if (!p.el) continue;
+    const lead = leadOf(p);
     const vis = show * clamp((p.k - 0.75) / 0.25);
     if (vis <= 0.01 || !p.side) { p.el.style.opacity = 0; continue; }
     tmp.copy(p.anchor); p.g.localToWorld(tmp); tmp.project(camV);
