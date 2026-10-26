@@ -5,7 +5,7 @@
 <meta name="description" content="Simulatore in realtà mista per la formazione su caldaie a condensazione e pompe di calore.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
 <style>
 /* Layout: a sticky full-screen "film" (night-indigo hero -> periwinkle daylight -> inside the lens), then a light editorial column. */
 :root {
@@ -63,7 +63,7 @@ a { color: inherit; }
 
 .copy { position: absolute; z-index: 5; will-change: opacity; }
 .copy:not(.hero) { opacity: 0; visibility: hidden; }
-.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 18px; }
+.eyebrow { font-family: var(--mono); font-weight: 600; font-size: 13.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 18px; }
 .eyebrow.ink { color: var(--accent-ink); }
 .eyebrow.blue { color: var(--flame); }
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
@@ -184,7 +184,7 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 .pilot-band .lead { color: rgba(241,242,248,.78); }
 .card { border: 1px solid rgba(241,242,248,.16); background: rgba(255,255,255,.05); border-radius: 8px; padding: 28px; min-width: 0; }
 .card dl { margin: 0; display: grid; gap: 18px; }
-.card dt { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: rgba(241,242,248,.55); }
+.card dt { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
 .card dd { margin: 4px 0 0; font-size: 19px; overflow-wrap: anywhere; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .copybtn { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; background: none; border: 1px solid rgba(241,242,248,.25); color: rgba(241,242,248,.7); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
 .copybtn:hover, .copybtn:focus-visible { color: var(--snow); border-color: var(--snow); }
@@ -541,9 +541,12 @@ const panelTex = canvasTex(1024, 620, (c, w, h) => {
   c.fillStyle = '#ebe8e2'; c.font = '700 56px Archivo, Arial, sans-serif';
   const lines = ['Togli il mantello frontale', 'per arrivare ai componenti', 'interni.'];
   lines.forEach((l, i) => c.fillText(l, 56, 240 + i * 70));
-  c.fillStyle = 'rgba(116,184,255,0.16)'; c.beginPath(); c.roundRect(56, 480, 300, 84, 14); c.fill();
+  // button sized to its label, so the text never spills out whatever font is loaded
+  c.font = '500 34px "IBM Plex Mono", monospace';
+  const btnLabel = 'Mostra il pezzo', btnW = Math.ceil(c.measureText(btnLabel).width) + 2 * 28;
+  c.fillStyle = 'rgba(116,184,255,0.16)'; c.beginPath(); c.roundRect(56, 480, btnW, 84, 14); c.fill();
   c.strokeStyle = 'rgba(116,184,255,0.7)'; c.lineWidth = 2; c.stroke();
-  c.fillStyle = '#cfe6ff'; c.font = '500 34px "IBM Plex Mono", monospace'; c.fillText('Mostra il pezzo', 82, 534);
+  c.fillStyle = '#cfe6ff'; c.textBaseline = 'middle'; c.fillText(btnLabel, 56 + 28, 480 + 42); c.textBaseline = 'alphabetic';
 });
 const panelMat = new THREE.MeshBasicMaterial({ map: panelTex, transparent: true, depthWrite: false });
 const panel = mesh(new THREE.PlaneGeometry(1.5, 0.908), panelMat, 1.4, 0.3, 0.7); panel.rotation.y = -0.45; panel.scale.setScalar(0.85);
