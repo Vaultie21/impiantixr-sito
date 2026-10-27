@@ -660,7 +660,7 @@ function sizePanel(big) {
   const h = big ? 680 : 620;                      // texture pixels; the plane keeps the texture's proportions
   panelTex.image.height = h; panelTex.dispose(); panelTex.redraw();
   panel.geometry.dispose(); panel.geometry = new THREE.PlaneGeometry(1.5, 1.5 * h / 1024);
-  panel.scale.setScalar(big ? 1.1 : 0.85); panel.position.x = big ? 1.38 : 1.4;
+  panel.scale.setScalar(big ? 1.1 : 0.85); panel.position.x = big ? 1.48 : 1.4;
 }
 sceneV.add(panel);
 
