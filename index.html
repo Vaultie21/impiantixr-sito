@@ -629,22 +629,25 @@ const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ size: .045, ma
 sceneV.add(dust);
 
 // procedure panel floating next to the boiler, as in the app;
-// phones get bigger type on a bigger panel, otherwise it is too small to read
+// phones get bigger type, on shorter lines, on a bigger and taller panel, otherwise it is too small to read
 let panelBig = false;
-const panelTex = canvasTex(1024, 620, (c, w, h) => {
-  const big = panelBig, mono = n => `500 ${n}px "IBM Plex Mono", monospace`;
+const panelTex = canvasTex(1024, 620, (c, w) => {
+  const big = panelBig, h = c.canvas.height, mono = n => `500 ${n}px "IBM Plex Mono", monospace`;
   c.clearRect(0, 0, w, h);
   c.fillStyle = 'rgba(13,17,23,0.92)'; c.beginPath(); c.roundRect(4, 4, w - 8, h - 8, 26); c.fill();
   c.strokeStyle = 'rgba(116,184,255,0.55)'; c.lineWidth = 3; c.stroke();
-  c.fillStyle = '#4fcfa8'; c.font = mono(big ? 44 : 30); c.fillText('PASSO 4 DI 25', 56, big ? 82 : 86);
-  c.fillStyle = '#8d959e'; c.fillText('MANUTENZIONE ORDINARIA', 56, big ? 138 : 132);
-  c.fillStyle = '#ebe8e2'; c.font = `700 ${big ? 72 : 56}px Archivo, Arial, sans-serif`;
-  const lines = ['Togli il mantello frontale', 'per arrivare ai componenti', 'interni.'];
-  lines.forEach((l, i) => c.fillText(l, 56, (big ? 238 : 240) + i * (big ? 82 : 70)));
+  c.fillStyle = '#4fcfa8'; c.font = mono(big ? 52 : 30); c.fillText('PASSO 4 DI 25', 56, big ? 92 : 86);
+  c.fillStyle = '#8d959e'; c.fillText('MANUTENZIONE ORDINARIA', 56, big ? 154 : 132);
+  const lines = big ? ['Togli il mantello', 'frontale per arrivare', 'ai componenti interni.'] : ['Togli il mantello frontale', 'per arrivare ai componenti', 'interni.'];
+  const font = n => `700 ${n}px Archivo, Arial, sans-serif`;
+  c.font = font(big ? 86 : 56);
+  if (big) c.font = font(Math.min(86, Math.floor(86 * (w - 112) / Math.max(...lines.map(l => c.measureText(l).width)))));   // never wider than the panel
+  c.fillStyle = '#ebe8e2';
+  lines.forEach((l, i) => c.fillText(l, 56, (big ? 268 : 240) + i * (big ? 96 : 70)));
   // button sized to its label, so the text never spills out whatever font is loaded
-  c.font = mono(big ? 46 : 34);
+  c.font = mono(big ? 54 : 34);
   const btnLabel = 'Mostra il pezzo', btnW = Math.ceil(c.measureText(btnLabel).width) + 2 * 28;
-  const btnY = big ? 456 : 480, btnH = big ? 100 : 84;
+  const btnY = big ? 512 : 480, btnH = big ? 108 : 84;
   c.fillStyle = 'rgba(116,184,255,0.16)'; c.beginPath(); c.roundRect(56, btnY, btnW, btnH, 14); c.fill();
   c.strokeStyle = 'rgba(116,184,255,0.7)'; c.lineWidth = 2; c.stroke();
   c.fillStyle = '#cfe6ff'; c.textBaseline = 'middle'; c.fillText(btnLabel, 56 + 28, btnY + btnH / 2); c.textBaseline = 'alphabetic';
@@ -653,7 +656,10 @@ const panelMat = new THREE.MeshBasicMaterial({ map: panelTex, transparent: true,
 const panel = mesh(new THREE.PlaneGeometry(1.5, 0.908), panelMat, 1.4, 0.3, 0.7); panel.rotation.y = -0.45; panel.scale.setScalar(0.85);
 function sizePanel(big) {
   if (big === panelBig) return;
-  panelBig = big; panelTex.redraw();
+  panelBig = big;
+  const h = big ? 680 : 620;                      // texture pixels; the plane keeps the texture's proportions
+  panelTex.image.height = h; panelTex.dispose(); panelTex.redraw();
+  panel.geometry.dispose(); panel.geometry = new THREE.PlaneGeometry(1.5, 1.5 * h / 1024);
   panel.scale.setScalar(big ? 1.1 : 0.85); panel.position.x = big ? 1.3 : 1.4;
 }
 sceneV.add(panel);
