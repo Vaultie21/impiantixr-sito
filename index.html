@@ -208,6 +208,7 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 .card dl { margin: 0; display: grid; gap: 18px; }
 .card dt { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
 .card dd { margin: 4px 0 0; font-size: 19px; overflow-wrap: anywhere; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.card dd.sub { font-size: 15px; color: rgba(241,242,248,.7); }
 .copybtn { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; background: none; border: 1px solid rgba(241,242,248,.25); color: rgba(241,242,248,.7); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
 .copybtn:hover, .copybtn:focus-visible { color: var(--snow); border-color: var(--snow); }
 .placeholder { color: var(--accent); }
@@ -336,7 +337,7 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
           </div>
           <div class="card">
             <dl>
-              <div><dt>Referente</dt><dd>Ing. Alessio Parato</dd></div>
+              <div><dt>Referente</dt><dd>Alessio Parato</dd><dd class="sub">Laureato in Ingegneria Informatica e Ingegneria Fisica</dd></div>
               <div><dt>Email</dt><dd><span id="mail">info@impiantixr.it</span><button class="copybtn" type="button" id="copymail">Copia</button></dd></div>
             </dl>
           </div>
