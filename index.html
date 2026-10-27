@@ -628,7 +628,7 @@ const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ size: .045, ma
 sceneV.add(dust);
 
 // procedure panel floating next to the boiler, as in the app;
-// phones get bigger type, on shorter lines, on a bigger and taller panel, otherwise it is too small to read
+// phones and narrow screens get bigger type, on shorter lines, on a taller panel (phones: also bigger), otherwise it is too small to read
 let panelBig = false;
 const panelTex = canvasTex(1024, 620, (c, w) => {
   const big = panelBig, h = c.canvas.height, mono = n => `500 ${n}px "IBM Plex Mono", monospace`;
@@ -653,13 +653,13 @@ const panelTex = canvasTex(1024, 620, (c, w) => {
 });
 const panelMat = new THREE.MeshBasicMaterial({ map: panelTex, transparent: true, depthWrite: false });
 const panel = mesh(new THREE.PlaneGeometry(1.5, 0.908), panelMat, 1.4, 0.3, 0.7); panel.rotation.y = -0.45; panel.scale.setScalar(0.85);
-function sizePanel(big) {
+function sizePanel(big, phone) {
+  panel.scale.setScalar(phone ? 1.1 : 0.85); panel.position.x = phone ? 1.48 : 1.4;
   if (big === panelBig) return;
   panelBig = big;
   const h = big ? 680 : 620;                      // texture pixels; the plane keeps the texture's proportions
   panelTex.image.height = h; panelTex.dispose(); panelTex.redraw();
   panel.geometry.dispose(); panel.geometry = new THREE.PlaneGeometry(1.5, 1.5 * h / 1024);
-  panel.scale.setScalar(big ? 1.1 : 0.85); panel.position.x = big ? 1.48 : 1.4;
 }
 sceneV.add(panel);
 
@@ -764,7 +764,7 @@ new GLTFLoader().load('caldaia.glb', gltf => {
   for (const [ids, name, offset, opts] of PARTS) part(name, ids.map(node), offset, opts);
   boiler.rotation.copy(turn);
   makeLabels();
-  labelsLaidOut = false; phoneFit = null;
+  labelsLaidOut = false; phoneFit = deskFit = null;
 });
 
 // ---------- labels ----------
@@ -816,16 +816,17 @@ function progress() {
 const viewH = () => hud.clientHeight;             // the stage above Safari's bottom toolbar: the scene is framed in it, the canvas runs on below
 let labelsLaidOut = false;                        // cleared on resize and when the fonts arrive
 let phoneFit = null;                              // phone framing of the boiler, cleared with the labels
+let deskFit = null;                               // wide screens: distance of the closed boiler, cleared with phoneFit
 function resize() {
   const w = canvas.clientWidth, h = viewH(), H = canvas.clientHeight;
   renderer.setSize(w, H, false); composer.setSize(w, H);
   camH.aspect = camV.aspect = w / h; camH.setViewOffset(w, h, 0, 0, w, H); camV.updateProjectionMatrix();   // framed as before, taller window
-  sizePanel(camV.aspect < 0.9);
-  labelsLaidOut = false; phoneFit = null;         // labels and the phone framing are laid out again for the new size
+  sizePanel(camV.aspect < 0.9 || w < 1280, camV.aspect < 0.9);
+  labelsLaidOut = false; phoneFit = deskFit = null;   // labels and the framings are laid out again for the new size
 }
 addEventListener('resize', resize); resize();
 
-document.fonts && document.fonts.ready.then(() => { panelTex.redraw(); displayTex.redraw(); gaugeTex.redraw(); labelsLaidOut = false; phoneFit = null; });
+document.fonts && document.fonts.ready.then(() => { panelTex.redraw(); displayTex.redraw(); gaugeTex.redraw(); labelsLaidOut = false; phoneFit = deskFit = null; });
 
 // ---------- per-frame state ----------
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), tmp = new THREE.Vector3();
@@ -868,11 +869,12 @@ function updateVR(p, t) {
   const far = Math.max(2.3 / tanH, 2.05 / (tanH * camV.aspect * share)) * (narrow ? 1.08 : 1.1);   // a phone keeps side margins for the labels
   const w = canvas.clientWidth, h = viewH(), H = canvas.clientHeight;
   const [f0, f1] = narrow ? (phoneFit ||= [fitPhone(w, h, 0), fitPhone(w, h, 1, far)]) : [];
-  const z = lerp(lerp(9.5, narrow ? f0.z : 6.2, easeOut(v)), narrow ? f1.z : far, ease(e));
+  const d0 = narrow ? null : (deskFit ||= fitDesk(w, h));
+  const z = lerp(lerp(9.5, narrow ? f0.z : d0.z, easeOut(v)), narrow ? f1.z : far, ease(e));
   camV.position.set(-0.3 + mouse.sx * 0.35, 0.25 - mouse.sy * 0.2 + lerp(0.4, 0, v), z);
   camV.lookAt(0, lerp(0.1, -0.05, e), 0.2);
   camV.zoom = narrow ? lerp(1, f1.zoom, ease(e)) : 1;   // applied by setViewOffset below
-  if (narrow) camV.setViewOffset(w, h, lerp(f0.dx, f1.dx, ease(e)) * ease(v), lerp(f0.dy, f1.dy, ease(e)) * ease(v), w, H); else camV.setViewOffset(w, h, -w * 0.17, 0, w, H);
+  if (narrow) camV.setViewOffset(w, h, lerp(f0.dx, f1.dx, ease(e)) * ease(v), lerp(f0.dy, f1.dy, ease(e)) * ease(v), w, H); else camV.setViewOffset(w, h, -lerp(d0.ox, w * 0.17, ease(e)), 0, w, H);
   boiler.rotation.y = lerp(-0.35, -0.12, ease(e)) + mouse.sx * 0.28;
   M.cover.opacity = 1 - range(c, 0.55, 1);
   M.cover.depthWrite = M.cover.opacity > 0.99;   // a fading cover must not hide what is behind it
@@ -905,6 +907,30 @@ function screenRect(obj, w, h) {
     x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
   }
   return [x0, y0, x1, y1];
+}
+// wide screens: the closed boiler, at 6.2, framed so that its step panel, on the right, stays on screen:
+// first slid left into the gap before the text, then, if that is not enough, moved back
+// (on screen, the panel's distance from the view centre goes with 1 / distance; its right edge is near z = 1)
+function fitDesk(w, h) {
+  const right = w - Math.max(32, w * 0.04), textRight = vrTexts[0].getBoundingClientRect().right + 40;
+  const saved = parts.map(p => [p.g.position.clone(), p.g.rotation.clone(), p.g.scale.x]), turn = boiler.rotation.clone();
+  for (const p of parts) { p.g.position.copy(p.base); p.g.rotation.set(0, 0, 0); p.g.scale.setScalar(1); }
+  boiler.rotation.set(0, -0.35, 0);
+  let z = 6.2, ox = w * 0.17;                     // the view is shifted right by ox
+  const rects = () => {
+    camV.position.set(-0.3, 0.25, z); camV.lookAt(0, 0.1, 0.2); camV.setViewOffset(w, h, -ox, 0, w, h); camV.updateMatrixWorld();
+    return [screenRect(boiler, w, h), screenRect(panel, w, h)];
+  };
+  let [b, r] = rects();
+  if (r[2] > right) { ox -= clamp(r[2] - right, 0, Math.max(0, b[0] - textRight)); [b, r] = rects(); }
+  for (let i = 0; i < 4 && r[2] > right; i++) {
+    const cx = w / 2 + ox;
+    z = 1 + (z - 1) * (r[2] - cx) / (right - cx) * 1.02;
+    [b, r] = rects();
+  }
+  parts.forEach((p, i) => { p.g.position.copy(saved[i][0]); p.g.rotation.copy(saved[i][1]); p.g.scale.setScalar(saved[i][2]); });
+  boiler.rotation.copy(turn);
+  return { z, ox };
 }
 // phones: the boiler, settled, framed in the room left between the HUD and its text below
 // (x = 0: closed, with its panel, by distance; x = 1: exploded, from minZ, which leaves room for the labels,
