@@ -123,9 +123,6 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 .copy.vr { left: 6vw; top: calc(50% - var(--under) / 2); transform: translateY(-50%); max-width: 23rem; color: var(--snow); }
 .copy.vr h2 { font-size: clamp(30px, 3.6vw, 52px); line-height: 1; font-weight: 800; font-stretch: 115%; letter-spacing: -0.025em; }
 .copy.vr p { color: rgba(241,242,248,.78); margin: 20px 0 0; font-size: 17px; }
-.hovertip .coarse { display: none; }
-@media (pointer: coarse) { .hovertip .fine { display: none; } .hovertip .coarse { display: inline; } }
-.hovertip { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: rgba(241,242,248,.5) !important; }
 
 .hud { position: absolute; inset: 0 0 var(--under); pointer-events: none; opacity: 0; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--flame); }
 .hud .corner { position: absolute; width: 28px; height: 28px; border-color: rgba(141,187,255,.55); border-style: solid; border-width: 0; }
@@ -291,7 +288,6 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
         <span class="eyebrow blue">Ogni pezzo al suo posto</span>
         <h2>Si indica, si smonta, si impara.</h2>
         <p>La procedura controlla ogni gesto. Se l'allievo sbaglia, il pannello lo dice e mostra il pezzo giusto. Tempi, errori e aiuti finiscono nel report.</p>
-        <p class="hovertip"><span class="fine">Passa il mouse sui componenti</span><span class="coarse">Tocca i componenti</span></p>
       </div>
 
       <div class="flash" id="flash"></div>
