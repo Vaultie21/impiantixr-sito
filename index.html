@@ -19,6 +19,9 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
+<!-- what the loader waits for starts now, alongside three.js; the boiler comes after (see the 3D module) -->
+<link rel="preload" href="sessione.webp" as="image" type="image/webp">
+<link rel="preload" href="visore.glb" as="fetch" crossorigin>
 <style>
 /* Fonts are self-hosted (latin subset from Google Fonts, SIL OFL: see fonts/OFL-*.txt), so the page contacts no third party. */
 @font-face { font-family: "Archivo"; font-style: normal; font-weight: 300 900; font-stretch: 62% 125%; font-display: swap; src: url(fonts/archivo.woff2) format("woff2"); }
@@ -395,7 +398,7 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
 
 <script>
 // Film-grain texture and the copy button run even if WebGL never loads.
-// Loader: the 3D module hides it once the headset and the photo are in; never longer than 5 s (the headset then pops in when it arrives).
+// Loader: the 3D module hides it once the photo and the headset are in; never longer than 5 s (the headset then pops in when it arrives).
 window.hideLoader = () => document.getElementById('loader').classList.add('done');
 setTimeout(window.hideLoader, 5000);
 document.getElementById('loader').addEventListener('wheel', e => e.preventDefault(), { passive: false });   // no scrolling the film behind it
@@ -584,7 +587,8 @@ const H = {
 // the headset comes from visore.glb (built in Blender: assets-source/modelli/visore_sito.py)
 const headset = new THREE.Group();
 const lensAt = { x: 0.33, y: 0.03 };            // right lens, once the headset faces backwards (set on load)
-const headsetReady = new GLTFLoader().loadAsync('visore.glb').then(gltf => {
+// loaded in turn, each with the whole connection: photo, headset (the loader goes), then the boiler further down the film
+const headsetReady = photoReady.then(() => new GLTFLoader().loadAsync('visore.glb')).then(gltf => {
   const model = gltf.scene, lensMat = new THREE.MeshBasicMaterial({ map: lensRT.texture });
   model.traverse(o => {
     if (!o.isMesh) return;
@@ -616,8 +620,9 @@ const headsetReady = new GLTFLoader().loadAsync('visore.glb').then(gltf => {
   headset.add(mesh(new THREE.BoxGeometry(0.22, 0.012, 0.01), M.strip, 0, ys, surface(model.getObjectByName('body'), 0, ys)));
   headset.add(model);
 });
-// the loader goes once both are in and the next frame has drawn them (or one of them failed)
-Promise.allSettled([headsetReady, photoReady]).then(() => requestAnimationFrame(() => requestAnimationFrame(window.hideLoader)));
+// the loader goes once the headset is in and the next frame has drawn it (or it failed)
+const headsetSettled = headsetReady.catch(() => {});
+headsetSettled.then(() => requestAnimationFrame(() => requestAnimationFrame(window.hideLoader)));
 
 H.cushion = H.gasket.clone(); H.cushion.transparent = true;   // rear cushion: fades with the straps
 sceneH.add(headset);
@@ -772,7 +777,7 @@ function face(obj, matName, geo, map, color) {
   target.add(m);
 }
 
-new GLTFLoader().load('caldaia.glb', gltf => {
+headsetSettled.then(() => new GLTFLoader().load('caldaia.glb', gltf => {
   const model = gltf.scene, turn = boiler.rotation.clone();
   model.scale.setScalar(S);
   model.position.set(0, -0.37 * S, -0.15 * S);    // the casing's centre on the origin
@@ -793,7 +798,7 @@ new GLTFLoader().load('caldaia.glb', gltf => {
   boiler.rotation.copy(turn);
   makeLabels();
   labelsLaidOut = false; phoneFit = deskFit = null;
-});
+}));
 
 // ---------- labels ----------
 const labelsEl = document.getElementById('labels');
