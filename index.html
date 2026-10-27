@@ -152,9 +152,12 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 .labels.compact .lbl { font-size: 10px; letter-spacing: .03em; }
 .labels.compact .lbl span { padding: 3px 6px; }
 
-.cursor { position: fixed; z-index: 30; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1px solid #fff; border-radius: 50%; pointer-events: none; transition: width .25s, height .25s, margin .25s, border-color .25s, background .25s; mix-blend-mode: difference; }
+.cursor { position: fixed; z-index: 60; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1px solid #fff; border-radius: 50%; pointer-events: none; transition: width .25s, height .25s, margin .25s, border-color .25s, background .25s, scale .15s, opacity .2s; mix-blend-mode: difference; }
 .cursor.big { width: 64px; height: 64px; margin: -32px 0 0 -32px; border-color: var(--accent); background: rgba(95,224,185,.12); mix-blend-mode: normal; }
+.cursor.down { scale: .6; }
+.cursor.out { opacity: 0; }
 @media (pointer: coarse) { .cursor { display: none; } }
+@media (hover: hover) and (pointer: fine) { html, html * { cursor: none !important; } }   /* the ring replaces the arrow */
 
 @media (max-width: 760px), (max-aspect-ratio: 9/10) {   /* phones, and tablets upright: the 3D scene frames them the same way */
   .hero .h-top { top: 12vh; right: 20px; }
@@ -821,6 +824,13 @@ const point = e => {
 };
 addEventListener('pointermove', point, { passive: true });
 addEventListener('pointerdown', point, { passive: true });   // a tap on a phone sends no move
+addEventListener('pointerdown', e => { if (e.button === 0) cursorEl.classList.add('down'); }, { passive: true });
+const release = () => cursorEl.classList.remove('down');
+addEventListener('pointerup', release, { passive: true });
+addEventListener('pointercancel', release, { passive: true });
+addEventListener('blur', release);
+document.documentElement.addEventListener('mouseleave', () => cursorEl.classList.add('out'));
+document.documentElement.addEventListener('mouseenter', () => cursorEl.classList.remove('out'));
 
 const film = document.getElementById('film');
 const copies = [...document.querySelectorAll('.copy')].map(el => { const [a, b] = el.dataset.range.split(',').map(Number); return { el, a, b }; });
@@ -1106,7 +1116,7 @@ function tick() {
   ps = reduced ? p : lerp(ps, p, 0.085);
   mouse.sx = lerp(mouse.sx, mouse.x, 0.05); mouse.sy = lerp(mouse.sy, mouse.y, 0.05);
   cx = lerp(cx, mouse.px, 0.2); cy = lerp(cy, mouse.py, 0.2);
-  cursorEl.style.transform = `translate(${cx}px, ${cy}px)`;
+  cursorEl.style.translate = `${cx}px ${cy}px`;   // not transform: the press scale would scale the offset too
 
   for (const c of copies) {
     const o = clamp(Math.min((ps - c.a) / 0.03, (c.b - ps) / 0.03));
@@ -1138,7 +1148,6 @@ function tick() {
     if (!labelsLaidOut) layoutLabels(t);
     const e = updateVR(ps, t);
     hovered = e > 0.6 ? pick() : null;
-    document.body.style.cursor = hovered ? 'pointer' : '';
     placeLabels(range(ps, 0.70, 0.95) > 0 ? 1 : 0);
     renderPass.scene = sceneV; renderPass.camera = camV;
   }
