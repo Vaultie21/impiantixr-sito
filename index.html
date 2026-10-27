@@ -229,8 +229,24 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 
 footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 
-@media (prefers-reduced-motion: reduce) { .grain, .hud .dot, .scroll i { animation: none; } }
+/* ---------- loader: the logo with a sweep of light, until the headset and the photo are ready ---------- */
+#loader { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: linear-gradient(135deg, var(--night), var(--night-2)); transition: opacity .7s ease, visibility 0s .7s; }
+#loader.done { opacity: 0; visibility: hidden; }
+#loader .mark { position: relative; width: 88px; height: 88px; opacity: 0; animation: loader-in .5s ease .25s forwards; }   /* late: a cached visit is ready before the logo shows */
+#loader .mark::before { content: ""; position: absolute; inset: -40%; border-radius: 50%; background: radial-gradient(circle, rgba(95,224,185,.28), transparent 65%); animation: loader-glow 1.8s ease-in-out infinite; }
+#loader .tile { position: relative; width: 100%; height: 100%; border-radius: 22%; overflow: hidden; box-shadow: 0 0 0 1px rgba(241,242,248,.1), 0 18px 40px rgba(5,7,20,.45); }
+#loader .tile img { display: block; width: 100%; height: 100%; }
+#loader .tile::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,.08) 42%, rgba(255,255,255,.55) 50%, rgba(255,255,255,.08) 58%, transparent 70%); mix-blend-mode: screen; transform: translateX(-120%); animation: loader-sweep 1.8s cubic-bezier(.45,.05,.25,1) infinite; }
+@keyframes loader-in { to { opacity: 1; } }
+@keyframes loader-sweep { 0% { transform: translateX(-120%); } 60%, 100% { transform: translateX(120%); } }
+@keyframes loader-glow { 0%, 100% { opacity: .45; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.04); } }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) { .grain, .hud .dot, .scroll i, #loader .mark::before, #loader .tile::after { animation: none; } }
 </style>
+
+<div id="loader" role="status"><div class="mark"><div class="tile"><img src="favicon.svg?v=2" alt=""></div></div><span class="sr">Caricamento</span></div>
+<noscript><style>#loader { display: none; }</style></noscript>
 
 <header class="bar" id="bar">
   <a class="wordmark" href="#top" aria-label="ImpiantiXR"><img class="logo" src="favicon.svg?v=2" alt="" width="30" height="30"><span class="name">impianti<small>XR</small></span></a>
@@ -375,6 +391,12 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
 
 <script>
 // Film-grain texture and the copy button run even if WebGL never loads.
+// Loader: the 3D module hides it once the headset and the photo are in; never longer than 12 s.
+window.hideLoader = () => document.getElementById('loader').classList.add('done');
+setTimeout(window.hideLoader, 12000);
+document.getElementById('loader').addEventListener('wheel', e => e.preventDefault(), { passive: false });   // no scrolling the film behind it
+document.getElementById('loader').addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
 (function () {
   const g = document.getElementById('grain');
   const s = 256; g.width = s; g.height = s;
@@ -420,6 +442,7 @@ try {
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 } catch (e) {
   document.documentElement.classList.add('nogl');
+  window.hideLoader();
   throw e;
 }
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
@@ -493,7 +516,7 @@ const PHOTO_DIST = 6.3, photoAt = new THREE.Vector3();   // held at this distanc
 let photoAspect = 1, photoWide = null, photoNarrow = null;   // height / width, and one texture per layout
 const photoImg = new Image();
 photoImg.src = 'sessione.webp';
-photoImg.decode().then(() => {
+const photoReady = photoImg.decode().then(() => {
   const w = photoImg.naturalWidth, h = photoImg.naturalHeight;
   photoAspect = h / w;
   const paint = fadeFrom => canvasTex(w, h, c => {
@@ -557,7 +580,7 @@ const H = {
 // the headset comes from visore.glb (built in Blender: assets-source/modelli/visore_sito.py)
 const headset = new THREE.Group();
 const lensAt = { x: 0.33, y: 0.03 };            // right lens, once the headset faces backwards (set on load)
-new GLTFLoader().load('visore.glb', gltf => {
+const headsetReady = new GLTFLoader().loadAsync('visore.glb').then(gltf => {
   const model = gltf.scene, lensMat = new THREE.MeshBasicMaterial({ map: lensRT.texture });
   model.traverse(o => {
     if (!o.isMesh) return;
@@ -589,6 +612,8 @@ new GLTFLoader().load('visore.glb', gltf => {
   headset.add(mesh(new THREE.BoxGeometry(0.22, 0.012, 0.01), M.strip, 0, ys, surface(model.getObjectByName('body'), 0, ys)));
   headset.add(model);
 });
+// the loader goes once both are in and the next frame has drawn them (or one of them failed)
+Promise.allSettled([headsetReady, photoReady]).then(() => requestAnimationFrame(() => requestAnimationFrame(window.hideLoader)));
 
 H.cushion = H.gasket.clone(); H.cushion.transparent = true;   // rear cushion: fades with the straps
 sceneH.add(headset);
