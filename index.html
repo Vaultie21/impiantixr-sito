@@ -508,7 +508,7 @@ photoImg.decode().then(() => {
     g = c.createLinearGradient(0, 0, w, 0); g.addColorStop(0, '#0000'); g.addColorStop(0.12, '#000');
     c.fillStyle = g; c.fillRect(0, 0, w, h);
   });
-  photoWide = paint(0.6);
+  photoWide = paint(0.5);
   photoNarrow = paint(0.36);                       // upright screens: gone before the text below it
   photo.material.map = photoWide; photo.material.needsUpdate = true;   // first map: the shader must be rebuilt
   photo.visible = true;
@@ -519,12 +519,12 @@ function placePhoto(p) {
   const halfH = PHOTO_DIST * Math.tan(THREE.MathUtils.degToRad(camH.fov / 2)), halfW = halfH * camH.aspect;
   let s, x, y;                                    // s = width; the boiler is on the photo's right, so it must stay clear of the headset
   if (narrow) { s = halfW * 2; x = 0; y = halfH * 0.22 - s * photoAspect * 0.5; }      // upright: the boiler just under the headset, on the right
-  else { s = Math.min(halfW * 0.76, halfH * 1.2 / photoAspect); x = -halfW + s * 0.5; y = halfH * 0.8 - s * photoAspect * 0.5; }   // free column on the left, above "entra"
+  else { s = Math.min(halfW * 1.2, halfH * 1.75 / photoAspect); x = -halfW * 0.36; y = halfH * 0.27 - s * photoAspect * 0.5; }   // as on the phone: large and low, behind the headset and "entra"
   photo.material.map = narrow ? photoNarrow : photoWide;
   photo.scale.set(s, s * photoAspect, 1);
   camH.updateMatrixWorld();
   photo.position.copy(camH.localToWorld(photoAt.set(x, y, -PHOTO_DIST))); photo.quaternion.copy(camH.quaternion);
-  photo.material.opacity = (narrow ? 0.8 : 1) * (1 - range(p, 0.03, 0.1));
+  photo.material.opacity = 0.8 * (1 - range(p, 0.03, 0.1));
 }
 
 const hemiH = new THREE.HemisphereLight(0xdfe4ff, 0x30335a, .7); sceneH.add(hemiH);
@@ -824,13 +824,13 @@ function updateHeadset(p, t) {
   const de = ease(clamp(d * 1.6));
   const dd = d * d * d;
   const follow = (1 - a * 0.6) * (1 - d);
-  headset.position.set(lerp(lerp(0, narrow ? 0 : -0.95, a), 0, de),
-    (reduced ? 0 : Math.sin(t * 0.9) * 0.06) * (1 - d) + (narrow ? lerp(0.3, 0.5, a) : 0) * (1 - de), 0);
+  headset.position.set(lerp(lerp(narrow ? 0 : 0.3, narrow ? 0 : -0.95, a), 0, de),   // desktop: a little up and right, clear of the boiler in the photo
+    (reduced ? 0 : Math.sin(t * 0.9) * 0.06) * (1 - d) + (narrow ? lerp(0.3, 0.5, a) : lerp(0.18, 0, a)) * (1 - de), 0);
   headset.rotation.set(
     lerp(lerp(0.16, 0.08, a), 0, de) + mouse.sy * 0.2 * follow,
     lerp(lerp(-0.78, Math.PI - 0.55, a), Math.PI, de) + mouse.sx * 0.4 * follow,
     (reduced ? 0 : Math.sin(t * 0.6) * 0.03) * (1 - d));
-  headset.scale.setScalar(narrow ? lerp(0.6, 1, de) : 1);
+  headset.scale.setScalar(lerp(narrow ? 0.6 : 0.82, 1, de));
   H.knit.opacity = 1 - range(d, 0.05, 0.4);       // straps fade as the headset goes on
   H.knit.depthWrite = H.knit.opacity > 0.99;
   H.cushion.opacity = H.knit.opacity; H.cushion.depthWrite = H.knit.depthWrite;
