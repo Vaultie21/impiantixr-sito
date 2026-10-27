@@ -71,9 +71,9 @@ a { color: inherit; }
 @media (max-width: 640px) { .bar nav a:not(.keep) { display: none; } }
 
 /* ---------- film ---------- */
-#film { position: relative; height: 580vh; }
-.stage { position: sticky; top: 0; height: 100vh; --under: 0px; overflow: hidden; background: var(--night) linear-gradient(135deg, var(--night), var(--night-2)); }
-.stage.day { background-color: var(--paper); }   /* hidden by the canvas: only Safari's status bar takes this colour, to match the scene */
+#film { position: relative; height: 580vh; background: var(--night); }   /* under the stage: shows for a frame when scrolling starts, before the stage sticks again */
+#film.day { background: var(--paper); }
+.stage { position: sticky; top: 0; height: 100vh; --under: 0px; overflow: hidden; background: linear-gradient(135deg, var(--night), var(--night-2)); }   /* no background-color: Safari would paint its toolbars with it */
 @supports (height: 100lvh) { .stage { height: 100lvh; --under: calc(100lvh - 100svh); } }   /* the scene runs on under Safari's bottom toolbar, like the page behind it; text, labels and HUD stay above it (--under) */
 #gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .grain { position: absolute; inset: -50%; pointer-events: none; opacity: .05; mix-blend-mode: overlay; animation: grain 1.2s steps(6) infinite; }
@@ -788,11 +788,11 @@ const copies = [...document.querySelectorAll('.copy')].map(el => { const [a, b] 
 const bar = document.getElementById('bar'), vrvignette = document.getElementById('vrvignette');
 const parEls = [...document.querySelectorAll('[data-par]')];
 const flash = document.getElementById('flash'), lensmask = document.getElementById('lensmask'), hud = document.getElementById('hud'), hudtime = document.getElementById('hudtime');
-const SWITCH = 0.42, stage = document.querySelector('.stage');
+const SWITCH = 0.42;
 
 // test hook for local screenshots: ?p=0.5 freezes the film at that point
 const testP = parseFloat(new URLSearchParams(location.search).get('p'));
-if (!isNaN(testP)) Object.assign(stage.style, { position: 'fixed', inset: '0' });
+if (!isNaN(testP)) Object.assign(document.querySelector('.stage').style, { position: 'fixed', inset: '0' });
 function progress() {
   if (!isNaN(testP)) return testP;
   const r = film.getBoundingClientRect();
@@ -1053,7 +1053,7 @@ function tick() {
   vrvignette.style.opacity = inVR ? range(ps, SWITCH, SWITCH + 0.05) : 0;
   const past = film.getBoundingClientRect().bottom < 70;
   bar.classList.toggle('on-light', (ps > 0.12 && ps < SWITCH - 0.005) || past);
-  stage.classList.toggle('day', ps > 0.12 && ps < SWITCH - 0.005);
+  film.classList.toggle('day', ps > 0.12 && ps < SWITCH - 0.005);
   bar.classList.toggle('past', past);
   for (const el of parEls) el.style.translate = `${(mouse.sx * el.dataset.par).toFixed(1)}px ${(mouse.sy * el.dataset.par * 0.5).toFixed(1)}px`;
   hud.style.opacity = range(ps, SWITCH + 0.02, 0.5);
