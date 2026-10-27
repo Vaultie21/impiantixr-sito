@@ -476,6 +476,46 @@ bgTex.paint = (m, t) => {
 };
 sceneH.background = bgTex;
 
+// class photo behind the headset (hero only): a cut-out of teacher and student at a holographic boiler,
+// hazed towards the night and faded at the edges, on a plane the headset passes in front of.
+const photo = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 }));
+photo.visible = false; sceneH.add(photo);
+const PHOTO_DIST = 6.3, photoAt = new THREE.Vector3();   // held at this distance in front of the camera, so the mouse moves only the headset
+let photoAspect = 1, photoWide = null, photoNarrow = null;   // height / width, and one texture per layout
+const photoImg = new Image();
+photoImg.src = 'sessione.webp';
+photoImg.decode().then(() => {
+  const w = photoImg.naturalWidth, h = photoImg.naturalHeight;
+  photoAspect = h / w;
+  const paint = fadeFrom => canvasTex(w, h, c => {
+    c.drawImage(photoImg, 0, 0, w, h);
+    c.globalCompositeOperation = 'source-atop';    // haze: tint the people, not the empty pixels
+    c.fillStyle = 'rgba(29,34,68,.36)'; c.fillRect(0, 0, w, h);
+    c.globalCompositeOperation = 'destination-in'; // fade the legs into the background, and the left edge where the photo cuts the student
+    let g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(fadeFrom, '#000'); g.addColorStop(fadeFrom + 0.3, '#0000');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    g = c.createLinearGradient(0, 0, w, 0); g.addColorStop(0, '#0000'); g.addColorStop(0.12, '#000');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+  });
+  photoWide = paint(0.6);
+  photoNarrow = paint(0.36);                       // upright screens: gone before the text below it
+  photo.material.map = photoWide; photo.material.needsUpdate = true;   // first map: the shader must be rebuilt
+  photo.visible = true;
+}).catch(() => {});
+function placePhoto(p) {
+  if (!photo.visible) return;
+  const narrow = camH.aspect < 0.9;
+  const halfH = PHOTO_DIST * Math.tan(THREE.MathUtils.degToRad(camH.fov / 2)), halfW = halfH * camH.aspect;
+  let s, x, y;                                    // s = width; the boiler is on the photo's right, so it must stay clear of the headset
+  if (narrow) { s = halfW * 2; x = 0; y = halfH * 0.22 - s * photoAspect * 0.5; }      // upright: the boiler just under the headset, on the right
+  else { s = Math.min(halfW * 0.76, halfH * 1.2 / photoAspect); x = -halfW + s * 0.5; y = halfH * 0.8 - s * photoAspect * 0.5; }   // free column on the left, above "entra"
+  photo.material.map = narrow ? photoNarrow : photoWide;
+  photo.scale.set(s, s * photoAspect, 1);
+  camH.updateMatrixWorld();
+  photo.position.copy(camH.localToWorld(photoAt.set(x, y, -PHOTO_DIST))); photo.quaternion.copy(camH.quaternion);
+  photo.material.opacity = (narrow ? 0.8 : 1) * (1 - range(p, 0.03, 0.1));
+}
+
 const hemiH = new THREE.HemisphereLight(0xdfe4ff, 0x30335a, .7); sceneH.add(hemiH);
 const keyH = new THREE.DirectionalLight(0xffffff, 1.6); keyH.position.set(-3, 4, 5); sceneH.add(keyH);
 const rimH = new THREE.DirectionalLight(0x7d6bff, 5.0); rimH.position.set(3.5, 1.5, -4); sceneH.add(rimH);
@@ -786,6 +826,7 @@ function updateHeadset(p, t) {
   camH.lookAt(lerp(0, lx, dd), lerp(0, ly, dd), 0);
   const m = range(p, 0.07, 0.17);
   if (!reduced || Math.abs(m - bgMix) > 0.003) { bgMix = m; bgTex.paint(m, reduced ? 0 : t); }
+  placePhoto(p);
 }
 
 function updateVR(p, t) {
