@@ -160,11 +160,19 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
   .copy.hero { display: flex; flex-direction: column; justify-content: flex-end; gap: 28px; padding: 0 20px 7vh; }   /* headline and side text stacked from the bottom: they never overlap, whatever the height */
   .hero .h-bottom, .hero .side { position: static; width: auto; }
   .hero .side { max-width: 36rem; }
+  .hero .eyebrow { font-size: 11.5px; letter-spacing: .08em; margin-bottom: 12px; }   /* on one line */
+  .hero .side .long { display: none; }            /* shorter on phones, or the text climbs over the headset */
+  .hero .actions { margin-top: 20px; }
   .scroll { display: none; }
   .copy.day, .copy.vr { left: 20px; right: 20px; top: auto; bottom: max(8vh, 64px); transform: none; width: auto; max-width: 36rem; }
-  .hud .row { left: 40px; right: 40px; }
+  .copy.vr { left: 30px; right: 30px; bottom: 68px; }   /* inside the HUD frame, above its bottom row */
+  .hud .row { left: 30px; right: 30px; }
   .hud .tl, .hud .tr { top: 72px; }
+  .hud .tl, .hud .bl { left: 12px; }
+  .hud .tr, .hud .br { right: 12px; }
+  .hud .bl, .hud .br { bottom: 12px; }
   .hud .top { top: 80px; }
+  .hud .bottom { bottom: 22px; }
   .hud .hide-sm { display: none; }
   .lbl { font-size: 10px; }
   .lbl b { width: 14px; }
@@ -254,7 +262,7 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
         <h1 class="h-bottom" data-par="14">entra<span>in aula.</span></h1>
         <div class="side">
           <span class="eyebrow">Formazione termoidraulica in realtà mista</span>
-          <p>Caldaie a condensazione e pompe di calore virtuali, a grandezza reale, dentro il vostro laboratorio. Gli allievi le aprono, cercano i guasti e seguono le procedure un passo alla volta.</p>
+          <p>Caldaie a condensazione e pompe di calore virtuali, a grandezza reale, dentro il vostro laboratorio.<span class="long"> Gli allievi le aprono, cercano i guasti e seguono le procedure un passo alla volta.</span></p>
           <div class="actions"><a class="btn solid" href="#pilot">Prenota una demo</a></div>
         </div>
         <div class="scroll" aria-hidden="true">Scorri <i>↓</i></div>
@@ -648,25 +656,26 @@ const parts = [];
 const S = 2.85;                                       // model metres -> scene units (the casing is 2.1 tall)
 
 // exploded parts: catalog IDs (the first one gives the part its origin), label, offset when exploded;
-// phone: false = no label on phones, there is no room for all of them;
+// phone: false = no label on phones, where only the main parts keep one, with room between them;
+// short = shorter name on phones, so the label fits beside its part;
 // anchorOn = the piece that holds the label dot; spot = the label's preferred side;
 // lead = longer line to the label (times the usual one)
 const PARTS = [
   [['casing'], 'Mantello', [-2.3, 0.25, 1.5], { rot: [0, 0.9, 0.1], phase: 'cover', label: false }],
-  [['flue-connection', 'flue-duct', 'flue-sensor', 'flue-test-points'], 'Attacco\naria-fumi', [0, 0.5, 0.1], { delay: 0.03 }],
-  [['primary-heat-exchanger'], 'Scambiatore primario\na condensazione', [0, 0.32, 0.8], { delay: 0.1 }],
-  [['burner', 'mixer-duct'], 'Bruciatore', [0, -0.15, 1.75], { delay: 0.18, rot: [0.2, -0.9, 0] }],
-  [['ignition-electrode'], 'Elettrodo di accensione\ne rilevazione', [-0.9, 0.15, 1.8], { delay: 0.24 }],
+  [['flue-connection', 'flue-duct', 'flue-sensor', 'flue-test-points'], 'Attacco\naria-fumi', [0, 0.5, 0.1], { delay: 0.03, phone: false }],
+  [['primary-heat-exchanger'], 'Scambiatore primario\na condensazione', [0, 0.32, 0.8], { delay: 0.1, short: 'Scambiatore\nprimario' }],
+  [['burner', 'mixer-duct'], 'Bruciatore', [0, -0.15, 1.75], { delay: 0.18, rot: [0.2, -0.9, 0], phone: false }],
+  [['ignition-electrode'], 'Elettrodo di accensione\ne rilevazione', [-0.9, 0.15, 1.8], { delay: 0.24, short: 'Elettrodo' }],
   [['expansion-vessel'], 'Vaso di\nespansione', [1.15, 0.65, 0.15], { delay: 0.08 }],
-  [['fan', 'gas-air-mixer'], 'Ventilatore\ne venturi', [1.1, 0.05, 0.9], { delay: 0.14 }],
+  [['fan', 'gas-air-mixer'], 'Ventilatore\ne venturi', [1.1, 0.05, 0.9], { delay: 0.14, phone: false }],
   [['gas-valve'], 'Valvola gas', [1.0, -0.45, 1.0], { delay: 0.2 }],
   [['circulator-pump', 'air-vent'], 'Circolatore', [1.05, -0.62, 0.9], { delay: 0.16 }],
   [['condensate-trap'], 'Sifone della\ncondensa', [-0.95, 0, 1.1], { delay: 0.26 }],
-  [['dhw-plate-exchanger'], 'Scambiatore sanitario\na piastre', [-1.2, -0.25, 0.9], { delay: 0.22 }],
+  [['dhw-plate-exchanger'], 'Scambiatore sanitario\na piastre', [-1.2, -0.25, 0.9], { delay: 0.22, phone: false }],
   [['diverter-valve'], 'Valvola\ndeviatrice', [-1.0, -0.72, 0.9], { delay: 0.2, phone: false }],
-  [['flow-tap', 'gas-tap', 'cold-water-tap', 'return-tap', 'installation-pipes'], "Rubinetti\nd'intercettazione", [0, -0.6, 0.3], { delay: 0.28, anchorOn: 'gas-tap__handle', spot: 'down', lead: 1.6 }],
-  [['safety-valve'], 'Valvola di\nsicurezza', [-0.75, -1.0, 0.8], { delay: 0.24 }],
-  [['control-panel'], 'Pannello\ncomandi', [0, -0.15, 1.9], { delay: 0.05 }],
+  [['flow-tap', 'gas-tap', 'cold-water-tap', 'return-tap', 'installation-pipes'], "Rubinetti\nd'intercettazione", [0, -0.6, 0.3], { delay: 0.28, anchorOn: 'gas-tap__handle', spot: 'down', lead: 1.6, phone: false }],
+  [['safety-valve'], 'Valvola di\nsicurezza', [-0.75, -1.0, 0.8], { delay: 0.24, phone: false }],
+  [['control-panel'], 'Pannello\ncomandi', [0, -0.15, 1.9], { delay: 0.05, phone: false }],
   [['control-board'], 'Scheda\nelettronica', [0, 0, 0.3], { delay: 0.12, phone: false }],
 ];
 // the electrode comes off with its cables unplugged, as in the procedure
@@ -676,7 +685,7 @@ function part(name, nodes, offset, opts = {}) {
   const g = new THREE.Group(); boiler.add(g);
   nodes[0].getWorldPosition(g.position);          // the boiler has no transform while its parts are made
   for (const n of nodes) g.attach(n);
-  const p = { name, g, base: g.position.clone(), off: new THREE.Vector3(...offset), rot: opts.rot || [0, 0, 0], delay: opts.delay ?? 0, phase: opts.phase || 'explode', label: opts.label !== false, phone: opts.phone !== false, spot: opts.spot, lead: opts.lead || 1, hover: 0 };
+  const p = { name, g, base: g.position.clone(), off: new THREE.Vector3(...offset), rot: opts.rot || [0, 0, 0], delay: opts.delay ?? 0, phase: opts.phase || 'explode', label: opts.label !== false, phone: opts.phone !== false, short: opts.short, spot: opts.spot, lead: opts.lead || 1, hover: 0 };
   // label dot: on the front face, towards the side where the part goes (big parts would hide their label);
   // for a group of pieces, in the middle of the front of the one named by anchorOn
   const on = opts.anchorOn && g.getObjectByName(opts.anchorOn), b = new THREE.Box3().setFromObject(on || g);
@@ -748,7 +757,7 @@ function makeLabels() {
   for (const p of parts) {
     if (!p.label) continue;
     const el = document.createElement('div'); el.className = 'lbl';
-    el.innerHTML = '<i></i><b></b><span></span>'; el.querySelector('span').textContent = p.name;
+    el.innerHTML = '<i></i><b></b><span></span>';
     labelsEl.appendChild(el); p.el = el;
   }
 }
@@ -945,7 +954,7 @@ const labelCopy = copies.find(c => c.a < 1 && c.b >= 1);   // the text beside th
 function layoutLabels(t) {
   const w = canvas.clientWidth, h = canvas.clientHeight, compact = compactLabels();
   labelsEl.classList.toggle('compact', compact);
-  for (const p of parts) p.sizes = undefined;
+  for (const p of parts) { p.sizes = undefined; if (p.el) p.el.querySelector('span').textContent = compact && p.short || p.name; }
   const msx = mouse.sx, msy = mouse.sy; mouse.sx = mouse.sy = 0;
   updateVR(1, t);                                 // the caller puts the boiler back where it was
   sceneV.updateMatrixWorld(); camV.updateMatrixWorld();   // otherwise still those of the last render
