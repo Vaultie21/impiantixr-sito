@@ -62,13 +62,15 @@ a { color: inherit; }
 .bar.on-light { color: var(--ink); }
 .bar.past { background: rgba(212,217,235,.9); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 1px 0 var(--line); }   /* after the film, or the page text runs under it */
 .bar > * { pointer-events: auto; }
-.wordmark { font-family: var(--display); font-weight: 850; font-stretch: 125%; font-size: 21px; letter-spacing: -0.01em; text-decoration: none; display: flex; align-items: baseline; gap: 6px; }
+.wordmark { font-family: var(--display); font-weight: 850; font-stretch: 125%; font-size: 21px; letter-spacing: -0.01em; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+.wordmark .logo { width: 30px; height: 30px; display: block; }
+.wordmark .name { display: flex; align-items: baseline; gap: 6px; }
 .wordmark small { font-family: var(--mono); font-weight: 500; font-size: 11px; letter-spacing: 0.12em; color: var(--accent); transition: color .5s; }
 .bar.on-light .wordmark small { color: var(--accent-ink); }
 .bar nav { display: flex; gap: clamp(20px, 5vw, 72px); font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.1em; text-transform: uppercase; }
 .bar nav a { text-decoration: none; opacity: .85; transition: opacity .2s; }
 .bar nav a:hover, .bar nav a:focus-visible { opacity: 1; }
-@media (max-width: 640px) { .bar nav a:not(.keep) { display: none; } }
+@media (max-width: 640px) { .bar nav a:not(.keep), .wordmark .name { display: none; } .wordmark .logo { width: 36px; height: 36px; } }   /* phones: the logo alone */
 
 /* ---------- film ---------- */
 #film { position: relative; height: 580vh; background: var(--night); }   /* under the stage: shows for a frame when scrolling starts, before the stage sticks again */
@@ -231,7 +233,7 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
 </style>
 
 <header class="bar" id="bar">
-  <a class="wordmark" href="#top">impianti<small>XR</small></a>
+  <a class="wordmark" href="#top" aria-label="ImpiantiXR"><img class="logo" src="favicon.svg?v=2" alt="" width="30" height="30"><span class="name">impianti<small>XR</small></span></a>
   <nav aria-label="Sezioni">
     <a href="#come">Come funziona</a>
     <a href="#procedure">Procedure</a>
