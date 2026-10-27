@@ -375,6 +375,16 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
   g.style.backgroundImage = 'url(' + g.toDataURL() + ')';
   g.style.width = g.style.height = '200%'; g.width = g.height = 1;
 
+  // Always open at the top: no scroll position restored on reload, and the menu links
+  // jump without writing #section into the address bar (a reload would land there again).
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if (!el) return;
+    e.preventDefault();
+    el.scrollIntoView();
+  }));
+
   const btn = document.getElementById('copymail');
   btn.addEventListener('click', () => {
     const t = document.getElementById('mail').textContent;
