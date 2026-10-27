@@ -4,15 +4,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ImpiantiXR</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Simulatore in realtà mista per la formazione su caldaie a condensazione e pompe di calore.">
+<meta name="description" content="Simulatore in realtà mista per la formazione termoidraulica: caldaie a condensazione e pompe di calore virtuali, a grandezza reale, in aula.">
 <link rel="canonical" href="https://impiantixr.it/">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="it_IT">
 <meta property="og:site_name" content="ImpiantiXR">
-<meta property="og:title" content="ImpiantiXR: la caldaia virtuale sul banco dell'aula">
-<meta property="og:description" content="Simulatore in realtà mista per la formazione su caldaie a condensazione e pompe di calore.">
+<meta property="og:title" content="ImpiantiXR: l’impianto entra in aula">
+<meta property="og:description" content="Simulatore in realtà mista per la formazione termoidraulica: caldaie a condensazione e pompe di calore virtuali, a grandezza reale, in aula.">
 <meta property="og:url" content="https://impiantixr.it/">
 <meta property="og:image" content="https://impiantixr.it/og.png">
 <meta property="og:image:width" content="1200">
@@ -190,6 +190,8 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 .proc-row .app { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .proc-row h3 { font-size: clamp(19px, 2vw, 25px); font-weight: 650; font-stretch: 100%; letter-spacing: -0.01em; }
 .proc-row .state { font-family: var(--mono); font-size: 12px; color: #2f4f9a; border: 1px solid rgba(47,79,154,.35); padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.proc-row.next h3 { color: var(--muted); font-weight: 550; }
+.proc-row.next .state { color: var(--muted); border: 1px dashed rgba(85,92,122,.5); }
 @media (max-width: 640px) { .proc-row { grid-template-columns: minmax(0, 1fr); gap: 6px; } .proc-row .state { justify-self: start; } }
 
 .who { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 56px; border-top: 1px solid var(--line); }
@@ -225,7 +227,7 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
   <nav aria-label="Sezioni">
     <a href="#come">Come funziona</a>
     <a href="#procedure">Procedure</a>
-    <a href="#pilot" class="keep">Pilot 2027</a>
+    <a href="#pilot" class="keep">Contatti</a>
   </nav>
 </header>
 
@@ -247,11 +249,11 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
       </div>
 
       <div class="copy hero" data-range="-1,0.12">
-        <h1 class="h-top" data-par="-14">La caldaia</h1>
+        <h1 class="h-top" data-par="-14">L’impianto</h1>
         <h1 class="h-bottom" data-par="14">entra<span>in aula.</span></h1>
         <div class="side">
           <span class="eyebrow">Formazione termoidraulica in realtà mista</span>
-          <p>Gli allievi smontano, diagnosticano e riparano caldaie a condensazione e pompe di calore virtuali, posate sul banco vero del laboratorio.</p>
+          <p>Caldaie a condensazione e pompe di calore virtuali, a grandezza reale, dentro il vostro laboratorio. Gli allievi le aprono, cercano i guasti e seguono le procedure un passo alla volta.</p>
           <div class="actions"><a class="btn solid" href="#pilot">Prenota una demo</a></div>
         </div>
         <div class="scroll" aria-hidden="true">Scorri <i>↓</i></div>
@@ -260,7 +262,7 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
       <div class="copy day" data-range="0.15,0.31">
         <span class="eyebrow ink">Il visore</span>
         <h2><span class="soft">Niente PC.</span><span>Niente cavi.</span></h2>
-        <p>Un visore autonomo per allievo, in aula. Vedi i compagni, il docente e il banco: la caldaia si aggiunge alla stanza.</p>
+        <p>Un visore autonomo per allievo. Si vedono i compagni, il docente e l’aula: l’apparecchio virtuale si aggiunge alla stanza.</p>
         <div class="spec">
           <span>Visore: <b>Meta Quest 3S</b></span>
           <span>Sessione: <b>10–20 minuti</b></span>
@@ -270,13 +272,13 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
 
       <div class="copy vr" data-range="0.47,0.63">
         <span class="eyebrow blue">Dentro il visore</span>
-        <h2>Una caldaia sul banco, a grandezza reale.</h2>
-        <p>L'allievo la posa sul banco del laboratorio, ci gira intorno e la apre con i controller. Il pannello accanto mostra il passo da fare.</p>
+        <h2>A grandezza reale, a portata di mano.</h2>
+        <p>L’allievo posa la caldaia su un tavolo dell’aula, ci gira intorno e la apre con i controller. Il pannello accanto mostra il passo da fare.</p>
       </div>
 
       <div class="copy vr" data-range="0.72,1.5">
         <span class="eyebrow blue">Ogni pezzo al suo posto</span>
-        <h2>Si indica, si smonta, si rimonta.</h2>
+        <h2>Si indica, si smonta, si impara.</h2>
         <p>La procedura controlla ogni gesto. Se l'allievo sbaglia, il pannello lo dice e mostra il pezzo giusto. Tempi, errori e aiuti finiscono nel report.</p>
         <p class="hovertip"><span class="fine">Passa il mouse sui componenti</span><span class="coarse">Tocca i componenti</span></p>
       </div>
@@ -289,24 +291,28 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
     <div class="wrap">
       <section class="block" id="come">
         <span class="eyebrow">Come funziona</span>
-        <h2>Dieci minuti di simulazione prima del banco vero.</h2>
-        <p class="lead">Non sostituisce il laboratorio: lo prepara. In VR si fa quello che al banco costa, è pericoloso o non si vede: aprire il generatore, provocare un guasto, ripetere finché la sequenza è giusta.</p>
+        <h2>Dieci minuti in simulazione, poi le mani sull’impianto vero.</h2>
+        <p class="lead">Non sostituisce il laboratorio: lo prepara. In realtà mista si fa quello che su un impianto vero costa, è pericoloso o non si vede: aprire l’apparecchio, provocare un guasto, ripetere finché la sequenza è giusta.</p>
         <ol class="steps">
-          <li><h3>Posa la caldaia</h3><p>Punti il banco con il controller e la caldaia compare, appoggiata e girata verso di te.</p></li>
+          <li><h3>Posa l’apparecchio</h3><p>Scegli caldaia o pompa di calore, punti un tavolo con il controller e l’apparecchio compare lì, girato verso di te.</p></li>
           <li><h3>Segui la procedura</h3><p>Manutenzione, guasti da diagnosticare, componenti dell'impianto. Un pannello guida un passo alla volta.</p></li>
           <li><h3>Leggi il report</h3><p>Per ogni allievo tempi, errori e aiuti, passo per passo, in un file che si apre con Excel.</p></li>
         </ol>
       </section>
 
       <section class="block" id="procedure">
-        <span class="eyebrow">Nel prototipo, oggi</span>
-        <h2>Quattro procedure, due apparecchi.</h2>
-        <p class="lead">Caldaia murale a condensazione e pompa di calore aria-acqua monoblocco in R290, generiche e senza marchio. I contenuti sono scritti dai manuali tecnici e passano dalla revisione di un docente esperto prima dell'uso in aula.</p>
+        <span class="eyebrow">Procedure</span>
+        <h2>Cosa c’è oggi, cosa arriva.</h2>
+        <p class="lead">Si parte da due apparecchi generici, senza marchio: una caldaia murale a condensazione e una pompa di calore aria-acqua monoblocco in R290. I contenuti sono scritti a partire dai manuali tecnici e, prima dell’uso in aula, li rivede un docente esperto.</p>
         <div class="proc">
-          <div class="proc-row"><span class="app">Caldaia</span><h3>Manutenzione ordinaria: elettrodo e sifone della condensa</h3><span class="state">prototipo</span></div>
-          <div class="proc-row"><span class="app">Caldaia</span><h3>Guasto: la caldaia va in blocco e non si accende</h3><span class="state">prototipo</span></div>
-          <div class="proc-row"><span class="app">Caldaia</span><h3>Guasto: pressione bassa, componenti dell'impianto</h3><span class="state">prototipo</span></div>
-          <div class="proc-row"><span class="app">Pompa di calore</span><h3>Pompa di calore aria-acqua: componenti e ciclo</h3><span class="state">prototipo</span></div>
+          <div class="proc-row"><span class="app">Caldaia</span><h3>Manutenzione ordinaria: elettrodo e sifone della condensa</h3><span class="state">nella demo</span></div>
+          <div class="proc-row"><span class="app">Caldaia</span><h3>Guasto: la caldaia va in blocco e non si accende</h3><span class="state">nella demo</span></div>
+          <div class="proc-row"><span class="app">Caldaia</span><h3>Guasto: pressione bassa, componenti dell’impianto</h3><span class="state">nella demo</span></div>
+          <div class="proc-row"><span class="app">Pompa di calore</span><h3>Pompa di calore aria-acqua: componenti e ciclo</h3><span class="state">nella demo</span></div>
+          <div class="proc-row next"><span class="app">In aula</span><h3>Modalità istruttore: il docente guida, gli allievi seguono in sincrono</h3><span class="state">in arrivo</span></div>
+          <div class="proc-row next"><span class="app">Caldaia e PdC</span><h3>Altri guasti da diagnosticare</h3><span class="state">in arrivo</span></div>
+          <div class="proc-row next"><span class="app">Climatizzazione</span><h3>Climatizzatori e refrigeranti, F-gas e R290</h3><span class="state">in arrivo</span></div>
+          <div class="proc-row next"><span class="app">Su misura</span><h3>Procedure sui vostri apparecchi e sui vostri programmi</h3><span class="state">in arrivo</span></div>
         </div>
       </section>
 
@@ -324,9 +330,9 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
       <section class="block" id="pilot">
         <div class="pilot-band">
           <div>
-            <span class="eyebrow">Pilot 2027</span>
-            <h2>Cerchiamo tre enti per il primo pilot.</h2>
-            <p class="lead">Una demo in aula di mezz'ora, con i vostri docenti. Poi, se vi convince, un semestre di prova sui vostri corsi.</p>
+            <span class="eyebrow">Progetto pilota 2027</span>
+            <h2>Cerchiamo tre enti pilota.</h2>
+            <p class="lead">Una demo di mezz’ora nella vostra sede, con i vostri docenti. Se vi convince, un semestre di prova sui vostri corsi, a condizioni riservate ai primi enti. E i vostri docenti ci aiutano a scegliere le prossime procedure.</p>
           </div>
           <div class="card">
             <dl>
