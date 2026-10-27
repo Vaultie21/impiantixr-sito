@@ -72,7 +72,9 @@ a { color: inherit; }
 
 /* ---------- film ---------- */
 #film { position: relative; height: 580vh; }
-.stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; background: linear-gradient(135deg, var(--night), var(--night-2)); }
+.stage { position: sticky; top: 0; height: 100vh; --under: 0px; overflow: hidden; background: var(--night) linear-gradient(135deg, var(--night), var(--night-2)); }
+.stage.day { background-color: var(--paper); }   /* hidden by the canvas: only Safari's status bar takes this colour, to match the scene */
+@supports (height: 100lvh) { .stage { height: 100lvh; --under: calc(100lvh - 100svh); } }   /* the scene runs on under Safari's bottom toolbar, like the page behind it; text, labels and HUD stay above it (--under) */
 #gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .grain { position: absolute; inset: -50%; pointer-events: none; opacity: .05; mix-blend-mode: overlay; animation: grain 1.2s steps(6) infinite; }
 @keyframes grain { 0%{transform:translate(0,0)} 20%{transform:translate(-3%,2%)} 40%{transform:translate(2%,-3%)} 60%{transform:translate(-2%,-1%)} 80%{transform:translate(3%,3%)} 100%{transform:translate(0,0)} }
@@ -89,7 +91,7 @@ a { color: inherit; }
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 
 /* hero: headline split around the floating headset */
-.copy.hero { inset: 0; color: var(--snow); pointer-events: none; }
+.copy.hero { inset: 0 0 var(--under); color: var(--snow); pointer-events: none; }
 .copy.hero a { pointer-events: auto; }
 .hero h1 { font-size: clamp(46px, 7.6vw, 128px); line-height: .9; font-weight: 850; font-stretch: 125%; letter-spacing: -0.03em; position: absolute; margin: 0 -.1em; padding: 0 .1em; }   /* the padding covers the glyphs drawn past the box (negative letter-spacing), or the parallax leaves trails of them */
 .hero .h-top { top: 15vh; right: 6vw; text-align: right; }
@@ -109,7 +111,7 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 @keyframes bob { 50% { transform: translateY(4px); } }
 
 /* daylight scene: dark text on periwinkle */
-.copy.day { right: 6vw; top: 50%; transform: translateY(-50%); width: min(34rem, 42vw); color: var(--ink); }
+.copy.day { right: 6vw; top: calc(50% - var(--under) / 2); transform: translateY(-50%); width: min(34rem, 42vw); color: var(--ink); }
 .copy.day h2 { font-size: clamp(36px, 4.6vw, 76px); line-height: .92; font-weight: 850; font-stretch: 125%; letter-spacing: -0.03em; }
 .copy.day h2 span { display: block; }
 .copy.day h2 .soft { color: #8d93ad; }
@@ -118,14 +120,14 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 .spec b { font-weight: 500; color: var(--ink); }
 
 /* inside the headset */
-.copy.vr { left: 6vw; top: 50%; transform: translateY(-50%); max-width: 23rem; color: var(--snow); }
+.copy.vr { left: 6vw; top: calc(50% - var(--under) / 2); transform: translateY(-50%); max-width: 23rem; color: var(--snow); }
 .copy.vr h2 { font-size: clamp(30px, 3.6vw, 52px); line-height: 1; font-weight: 800; font-stretch: 115%; letter-spacing: -0.025em; }
 .copy.vr p { color: rgba(241,242,248,.78); margin: 20px 0 0; font-size: 17px; }
 .hovertip .coarse { display: none; }
 @media (pointer: coarse) { .hovertip .fine { display: none; } .hovertip .coarse { display: inline; } }
 .hovertip { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: rgba(241,242,248,.5) !important; }
 
-.hud { position: absolute; inset: 0; pointer-events: none; opacity: 0; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--flame); }
+.hud { position: absolute; inset: 0 0 var(--under); pointer-events: none; opacity: 0; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--flame); }
 .hud .corner { position: absolute; width: 28px; height: 28px; border-color: rgba(141,187,255,.55); border-style: solid; border-width: 0; }
 .hud .tl { top: 84px; left: 28px; border-top-width: 1px; border-left-width: 1px; }
 .hud .tr { top: 84px; right: 28px; border-top-width: 1px; border-right-width: 1px; }
@@ -138,7 +140,7 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 @keyframes blink { 50% { opacity: .25; } }
 .hud .num { font-variant-numeric: tabular-nums; }
 
-.labels { position: absolute; inset: 0; pointer-events: none; }
+.labels { position: absolute; inset: 0 0 var(--under); pointer-events: none; }
 /* each label sits at its part's dot; its line and box are placed from script on whichever side is free */
 .lbl { position: absolute; left: 0; top: 0; opacity: 0; font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; color: var(--snow); will-change: transform, opacity; }
 .lbl i { position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--snow); background: rgba(16,19,42,.6); transition: background .2s, border-color .2s, transform .2s; }
@@ -164,8 +166,8 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
   .hero .side .long { display: none; }            /* shorter on phones, or the text climbs over the headset */
   .hero .actions { margin-top: 20px; }
   .scroll { display: none; }
-  .copy.day, .copy.vr { left: 20px; right: 20px; top: auto; bottom: max(8vh, 64px); transform: none; width: auto; max-width: 36rem; }
-  .copy.vr { left: 30px; right: 30px; bottom: 68px; }   /* inside the HUD frame, above its bottom row */
+  .copy.day, .copy.vr { left: 20px; right: 20px; top: auto; bottom: calc(max(8vh, 64px) + var(--under)); transform: none; width: auto; max-width: 36rem; }
+  .copy.vr { left: 30px; right: 30px; bottom: calc(68px + var(--under)); }   /* inside the HUD frame, above its bottom row */
   .hud .row { left: 30px; right: 30px; }
   .hud .tl, .hud .tr { top: 72px; }
   .hud .tl, .hud .bl { left: 12px; }
@@ -786,23 +788,24 @@ const copies = [...document.querySelectorAll('.copy')].map(el => { const [a, b] 
 const bar = document.getElementById('bar'), vrvignette = document.getElementById('vrvignette');
 const parEls = [...document.querySelectorAll('[data-par]')];
 const flash = document.getElementById('flash'), lensmask = document.getElementById('lensmask'), hud = document.getElementById('hud'), hudtime = document.getElementById('hudtime');
-const SWITCH = 0.42;
+const SWITCH = 0.42, stage = document.querySelector('.stage');
 
 // test hook for local screenshots: ?p=0.5 freezes the film at that point
 const testP = parseFloat(new URLSearchParams(location.search).get('p'));
-if (!isNaN(testP)) Object.assign(document.querySelector('.stage').style, { position: 'fixed', inset: '0' });
+if (!isNaN(testP)) Object.assign(stage.style, { position: 'fixed', inset: '0' });
 function progress() {
   if (!isNaN(testP)) return testP;
   const r = film.getBoundingClientRect();
   return clamp(-r.top / (r.height - innerHeight));
 }
 
+const viewH = () => hud.clientHeight;             // the stage above Safari's bottom toolbar: the scene is framed in it, the canvas runs on below
 let labelsLaidOut = false;                        // cleared on resize and when the fonts arrive
 let phoneFit = null;                              // phone framing of the boiler, cleared with the labels
 function resize() {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  renderer.setSize(w, h, false); composer.setSize(w, h);
-  camH.aspect = camV.aspect = w / h; camH.updateProjectionMatrix(); camV.updateProjectionMatrix();
+  const w = canvas.clientWidth, h = viewH(), H = canvas.clientHeight;
+  renderer.setSize(w, H, false); composer.setSize(w, H);
+  camH.aspect = camV.aspect = w / h; camH.setViewOffset(w, h, 0, 0, w, H); camV.updateProjectionMatrix();   // framed as before, taller window
   labelsLaidOut = false; phoneFit = null;         // labels and the phone framing are laid out again for the new size
 }
 addEventListener('resize', resize); resize();
@@ -848,13 +851,13 @@ function updateVR(p, t) {
   const narrow = camV.aspect < 0.9;
   const share = narrow ? 1 : 0.56;
   const far = Math.max(2.3 / tanH, 2.05 / (tanH * camV.aspect * share)) * (narrow ? 1.08 : 1.1);   // a phone keeps side margins for the labels
-  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const w = canvas.clientWidth, h = viewH(), H = canvas.clientHeight;
   const [f0, f1] = narrow ? (phoneFit ||= [fitPhone(w, h, 0), fitPhone(w, h, 1, far)]) : [];
   const z = lerp(lerp(9.5, narrow ? f0.z : 6.2, easeOut(v)), narrow ? f1.z : far, ease(e));
   camV.position.set(-0.3 + mouse.sx * 0.35, 0.25 - mouse.sy * 0.2 + lerp(0.4, 0, v), z);
   camV.lookAt(0, lerp(0.1, -0.05, e), 0.2);
   camV.zoom = narrow ? lerp(1, f1.zoom, ease(e)) : 1;   // applied by setViewOffset below
-  if (narrow) camV.setViewOffset(w, h, lerp(f0.dx, f1.dx, ease(e)) * ease(v), lerp(f0.dy, f1.dy, ease(e)) * ease(v), w, h); else camV.setViewOffset(w, h, -w * 0.17, 0, w, h);
+  if (narrow) camV.setViewOffset(w, h, lerp(f0.dx, f1.dx, ease(e)) * ease(v), lerp(f0.dy, f1.dy, ease(e)) * ease(v), w, H); else camV.setViewOffset(w, h, -w * 0.17, 0, w, H);
   boiler.rotation.y = lerp(-0.35, -0.12, ease(e)) + mouse.sx * 0.28;
   M.cover.opacity = 1 - range(c, 0.55, 1);
   M.cover.depthWrite = M.cover.opacity > 0.99;   // a fading cover must not hide what is behind it
@@ -952,7 +955,7 @@ function labelTop() {                             // just under the top bar
 const labelCopy = copies.find(c => c.a < 1 && c.b >= 1);   // the text beside the exploded boiler
 
 function layoutLabels(t) {
-  const w = canvas.clientWidth, h = canvas.clientHeight, compact = compactLabels();
+  const w = canvas.clientWidth, h = viewH(), H = canvas.clientHeight, compact = compactLabels();   // projected points span H, labels stay within h
   labelsEl.classList.toggle('compact', compact);
   for (const p of parts) { p.sizes = undefined; if (p.el) p.el.querySelector('span').textContent = compact && p.short || p.name; }
   const msx = mouse.sx, msy = mouse.sy; mouse.sx = mouse.sy = 0;
@@ -968,11 +971,11 @@ function layoutLabels(t) {
   const walk = document.createTreeWalker(labelCopy.el, NodeFilter.SHOW_TEXT);   // the lines of text, not the whole block
   while (walk.nextNode()) { textRange.selectNodeContents(walk.currentNode); for (const r of textRange.getClientRects()) keepOff(r, compact ? 4 : 10); }
   labelCopy.el.style.translate = shift;
-  const solids = [[screenRect(frame, w, h), 0.5]];   // the casing's box on screen is loose, its parts' are tight
-  for (const p of parts) if (p.phase !== 'cover') solids.push([screenRect(p.g, w, h), 2]);
+  const solids = [[screenRect(frame, w, H), 0.5]];   // the casing's box on screen is loose, its parts' are tight
+  for (const p of parts) if (p.phase !== 'cover') solids.push([screenRect(p.g, w, H), 2]);
   const shown = parts.filter(p => p.el && (p.phone || !compact));
   for (const p of parts) p.side = undefined;      // a label left out has no spot and stays hidden
-  const dots = shown.map(p => { tmp.copy(p.anchor); p.g.localToWorld(tmp); tmp.project(camV); return [(tmp.x * .5 + .5) * w, (-tmp.y * .5 + .5) * h]; });
+  const dots = shown.map(p => { tmp.copy(p.anchor); p.g.localToWorld(tmp); tmp.project(camV); return [(tmp.x * .5 + .5) * w, (-tmp.y * .5 + .5) * H]; });
 
   for (const [n, p] of shown.entries()) {
     const [x, y] = dots[n], spots = labelSpots(p, x, y, w);
@@ -999,14 +1002,14 @@ function layoutLabels(t) {
 }
 
 function placeLabels(show) {
-  const w = canvas.clientWidth, h = canvas.clientHeight, top = labelTop();
+  const w = canvas.clientWidth, h = viewH(), H = canvas.clientHeight, top = labelTop();
   for (const p of parts) {
     if (!p.el) continue;
     const lead = leadOf(p);
     const vis = show * clamp((p.k - 0.75) / 0.25);
     if (vis <= 0.01 || !p.side) { p.el.style.opacity = 0; continue; }
     tmp.copy(p.anchor); p.g.localToWorld(tmp); tmp.project(camV);
-    const x = (tmp.x * .5 + .5) * w, y = (-tmp.y * .5 + .5) * h;
+    const x = (tmp.x * .5 + .5) * w, y = (-tmp.y * .5 + .5) * H;
     const [bx, by] = labelSpots(p, x, y, w)[p.side];
     const span = p.el.querySelector('span'), line = p.el.querySelector('b');
     span.style.left = `${(bx - x).toFixed(1)}px`; span.style.top = `${(by - y).toFixed(1)}px`;
@@ -1050,6 +1053,7 @@ function tick() {
   vrvignette.style.opacity = inVR ? range(ps, SWITCH, SWITCH + 0.05) : 0;
   const past = film.getBoundingClientRect().bottom < 70;
   bar.classList.toggle('on-light', (ps > 0.12 && ps < SWITCH - 0.005) || past);
+  stage.classList.toggle('day', ps > 0.12 && ps < SWITCH - 0.005);
   bar.classList.toggle('past', past);
   for (const el of parEls) el.style.translate = `${(mouse.sx * el.dataset.par).toFixed(1)}px ${(mouse.sy * el.dataset.par * 0.5).toFixed(1)}px`;
   hud.style.opacity = range(ps, SWITCH + 0.02, 0.5);
