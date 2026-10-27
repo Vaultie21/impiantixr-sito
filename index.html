@@ -391,9 +391,9 @@ footer { padding-block: 40px 56px; font-family: var(--mono); font-size: 12px; co
 
 <script>
 // Film-grain texture and the copy button run even if WebGL never loads.
-// Loader: the 3D module hides it once the headset and the photo are in; never longer than 12 s.
+// Loader: the 3D module hides it once the headset and the photo are in; never longer than 4 s (the headset then pops in when it arrives).
 window.hideLoader = () => document.getElementById('loader').classList.add('done');
-setTimeout(window.hideLoader, 12000);
+setTimeout(window.hideLoader, 4000);
 document.getElementById('loader').addEventListener('wheel', e => e.preventDefault(), { passive: false });   // no scrolling the film behind it
 document.getElementById('loader').addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
