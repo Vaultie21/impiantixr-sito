@@ -529,9 +529,9 @@ function placePhoto(p) {
 
 const hemiH = new THREE.HemisphereLight(0xdfe4ff, 0x30335a, .7); sceneH.add(hemiH);
 const keyH = new THREE.DirectionalLight(0xffffff, 1.6); keyH.position.set(-3, 4, 5); sceneH.add(keyH);
-const rimH = new THREE.DirectionalLight(0x7d6bff, 5.0); rimH.position.set(3.5, 1.5, -4); sceneH.add(rimH);
-const rim2H = new THREE.DirectionalLight(0x6f86ff, 3.0); rim2H.position.set(-4, -1, -3); sceneH.add(rim2H);
-const warmH = new THREE.PointLight(0xec8f55, 3, 8, 2); warmH.position.set(-1.5, -1.8, 1.5); sceneH.add(warmH);
+const rimH = new THREE.DirectionalLight(0x7d6bff, 3.5); rimH.position.set(3.5, 1.5, -4); sceneH.add(rimH);
+const rim2H = new THREE.DirectionalLight(0x6f86ff, 2.0); rim2H.position.set(-2.5, -0.5, -5); sceneH.add(rim2H);   // well behind: from the side it hit the glossy visor head-on when the mouse turned it, and the highlight bloomed past the edges
+const warmH = new THREE.PointLight(0xec8f55, 1.2, 8, 2); warmH.position.set(-1.5, -1.8, 1.5); sceneH.add(warmH);
 
 // render target that shows the VR scene inside the lenses
 const lensRT = new THREE.WebGLRenderTarget(768, 768, { type: THREE.HalfFloatType });
@@ -548,7 +548,7 @@ knitTex.wrapS = knitTex.wrapT = THREE.RepeatWrapping; knitTex.repeat.set(3, 3); 
 
 const H = {
   body:  new THREE.MeshPhysicalMaterial({ color: 0x15131b, roughness: .5, metalness: .05, clearcoat: .35, clearcoatRoughness: .35 }),
-  visor: new THREE.MeshPhysicalMaterial({ color: 0x050409, roughness: .12, clearcoat: 1, clearcoatRoughness: .05 }),
+  visor: new THREE.MeshPhysicalMaterial({ color: 0x050409, roughness: .16, clearcoat: 1, clearcoatRoughness: .12 }),
   gasket:new THREE.MeshStandardMaterial({ color: 0x232436, roughness: .95 }),
   inner: new THREE.MeshStandardMaterial({ color: 0x1a1b29, roughness: .8 }),
   knit:  new THREE.MeshStandardMaterial({ color: 0xffffff, map: knitTex, bumpMap: knitTex, bumpScale: .01, roughness: 1, transparent: true }),
